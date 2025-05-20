@@ -25,6 +25,14 @@ def reports():
     except Exception as e:
         return f"An error occurred: {str(e)}", 500
 
+# Add the missing route
+@main_bp.route('/list_cost_codes')
+def list_cost_codes():
+    try:
+        return render_template('list_cost_codes.html')
+    except Exception as e:
+        return f"An error occurred: {str(e)}", 500
+
 # Create the Flask app
 app = Flask(__name__)
 
