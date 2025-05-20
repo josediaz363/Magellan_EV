@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
 from flask import Blueprint, render_template, request, send_file, current_app, jsonify
-from .models import Project, SubJob
-from .alternative_report_generator import AlternativeReportGenerator
+from models import Project, SubJob
+from alternative_report_generator import AlternativeReportGenerator
 
 reports_bp = Blueprint('reports', __name__)
 
