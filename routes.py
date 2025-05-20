@@ -1,8 +1,8 @@
 import os
 import sys
 from flask import Blueprint, render_template, request, jsonify, current_app, send_file
-from src.models import db, Project, SubJob, CostCode, RuleOfCredit, WorkItem
-from src.alternative_report_generator import AlternativeReportGenerator
+from models import db, Project, SubJob, CostCode, RuleOfCredit, WorkItem
+from alternative_report_generator import AlternativeReportGenerator
 
 reports_bp = Blueprint('reports', __name__)
 
