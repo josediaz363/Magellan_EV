@@ -1,0 +1,10 @@
+Flask
+SQLAlchemy
+Flask-SQLAlchemy
+WeasyPrint
+pandas
+xlsxwriter
+Pillow
+numpy
+gunicorn
+reportlab

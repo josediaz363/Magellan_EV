@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}View Sub-Job - {{ sub_job.name }}{% endblock %}
+
+{% block content %}
+    <h1>Sub-Job: {{ sub_job.name }} ({{ sub_job.sub_job_id_str }})</h1>
+    <p><strong>Description:</strong> {{ sub_job.description }}</p>
+    <p><strong>Area:</strong> {{ sub_job.area }}</p>
+    <p><strong>Belongs to Project:</strong> {{ sub_job.project.name }}</p>
+
+    <hr>
+
+    <h2>Work Items in this Sub-Job</h2>
+    <a href="{{ url_for('main.add_work_item', sub_job_id=sub_job.id) }}" class="btn btn-success mb-3">Add New Work Item</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th scope="col">Work Item ID</th>
+                <th scope="col">Description</th>
+                <th scope="col">Cost Code</th>
+                <th scope="col">Rule of Credit</th>
+                <th scope="col">Budgeted Qty</th>
+                <th scope="col">UOM</th>
+                <th scope="col">Budgeted Hours</th>
+                <th scope="col">Earned Hours</th>
+                <th scope="col">Earned Qty</th>
+                <th scope="col">% Complete (Hours)</th>
+                <th scope="col">% Complete (Qty)</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for work_item in sub_job.work_items %}
+            <tr>
+                <td>{{ work_item.work_item_id_str }}</td>
+                <td>{{ work_item.description }}</td>
+                <td>{{ work_item.cost_code.cost_code_id_str if work_item.cost_code else 'N/A' }}</td>
+                <td>{{ work_item.rule_of_credit.name if work_item.rule_of_credit else 'N/A' }}</td>
+                <td>{{ "%.2f"|format(work_item.budgeted_quantity) if work_item.budgeted_quantity is not none else 'N/A' }}</td>
+                <td>{{ work_item.unit_of_measure }}</td>
+                <td>{{ "%.2f"|format(work_item.budgeted_man_hours) if work_item.budgeted_man_hours is not none else 'N/A' }}</td>
+                <td>{{ "%.2f"|format(work_item.earned_man_hours) if work_item.earned_man_hours is not none else 'N/A' }}</td>
+                <td>{{ "%.2f"|format(work_item.earned_quantity) if work_item.earned_quantity is not none else 'N/A' }}</td>
+                <td>{{ "%.2f"|format(work_item.percent_complete_hours) if work_item.percent_complete_hours is not none else 'N/A' }}%</td>
+                <td>{{ "%.2f"|format(work_item.percent_complete_quantity) if work_item.percent_complete_quantity is not none else 'N/A' }}%</td>
+                <td>
+                    <a href="{{ url_for('main.update_work_item_progress_route', work_item_id=work_item.id) }}" class="btn btn-sm btn-primary">View/Update Progress</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="12">No work items found for this sub-job.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <a href="{{ url_for('main.view_project', project_id=sub_job.project_id) }}" class="btn btn-secondary mt-3">Back to Project</a>
+{% endblock %}
+

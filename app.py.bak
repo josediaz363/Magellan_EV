@@ -1,0 +1,147 @@
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+import os
+import json # Added for JSON handling
+
+app = Flask(__name__, template_folder='templates') # Ensure templates folder is recognized
+
+# Database Configuration
+# Using environment variables for sensitive data is a good practice.
+# For simplicity in this example, we'll use default values if not set.
+DB_USERNAME = os.getenv('DB_USERNAME', 'root')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '3306')
+DB_NAME = os.getenv('DB_NAME', 'earned_value_db')
+
+# Use SQLite for MVP for simplicity and to avoid external DB setup for now
+# Later, this can be switched to MySQL as originally planned
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db' # Using a local SQLite file
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# --- Database Models ---
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id_str = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    sub_jobs = db.relationship('SubJob', backref='project', lazy=True, cascade="all, delete-orphan")
+
+class SubJob(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sub_job_id_str = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    work_items = db.relationship('WorkItem', backref='sub_job', lazy=True, cascade="all, delete-orphan")
+    area = db.Column(db.String(100))
+
+class CostCode(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cost_code_id_str = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.String(200), nullable=False)
+    discipline = db.Column(db.String(100))
+    work_items = db.relationship('WorkItem', backref='cost_code', lazy=True)
+
+class RuleOfCredit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    # Stores steps as a JSON string, e.g.,
+    # [{'step_name': 'Hang Tags', 'weight': 5.0}, {'step_name': 'Install Blinds', 'weight': 20.0}]
+    steps_json = db.Column(db.Text, nullable=False) # JSON string of steps and their weights
+    work_items = db.relationship('WorkItem', backref='rule_of_credit', lazy=True)
+
+class WorkItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    work_item_id_str = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    sub_job_id = db.Column(db.Integer, db.ForeignKey('sub_job.id'), nullable=False)
+    cost_code_id = db.Column(db.Integer, db.ForeignKey('cost_code.id'), nullable=False)
+    rule_of_credit_id = db.Column(db.Integer, db.ForeignKey('rule_of_credit.id'), nullable=False)
+    budgeted_quantity = db.Column(db.Float)
+    unit_of_measure = db.Column(db.String(20))
+    budgeted_man_hours = db.Column(db.Float)
+    # Stores progress for each step as a JSON string, e.g., {'Hang Tags': 100, 'Install Blinds': 50}
+    progress_json = db.Column(db.Text, default='{}') # JSON string of step name and its % completion
+    earned_man_hours = db.Column(db.Float, default=0.0)
+    earned_quantity = db.Column(db.Float, default=0.0)
+    percent_complete_hours = db.Column(db.Float, default=0.0)
+    percent_complete_quantity = db.Column(db.Float, default=0.0)
+
+    def update_progress(self, step_name, step_completion_percentage):
+        progress = json.loads(self.progress_json or '{}')
+        progress[step_name] = step_completion_percentage
+        self.progress_json = json.dumps(progress)
+        self.calculate_earned_values()
+
+    def calculate_earned_values(self):
+        rule = RuleOfCredit.query.get(self.rule_of_credit_id)
+        if not rule:
+            return
+
+        steps_definition = json.loads(rule.steps_json)
+        current_progress_data = json.loads(self.progress_json or '{}')
+
+        total_weighted_percentage_hours = 0
+        total_weighted_percentage_quantity = 0
+
+        for step_def in steps_definition:
+            step_name = step_def['step_name']
+            step_weight = float(step_def['weight'])
+            step_completion = float(current_progress_data.get(step_name, 0)) # Get completion for this step, default to 0 if not set
+            
+            total_weighted_percentage_hours += (step_completion / 100.0) * step_weight
+            # Assuming same logic for quantity for now, can be adjusted if needed
+            total_weighted_percentage_quantity += (step_completion / 100.0) * step_weight
+
+        if self.budgeted_man_hours and self.budgeted_man_hours > 0:
+            self.earned_man_hours = (total_weighted_percentage_hours / 100.0) * self.budgeted_man_hours
+            self.percent_complete_hours = (self.earned_man_hours / self.budgeted_man_hours) * 100 if self.budgeted_man_hours else 0
+        else:
+            self.earned_man_hours = 0
+            self.percent_complete_hours = 0
+
+        if self.budgeted_quantity and self.budgeted_quantity > 0:
+            self.earned_quantity = (total_weighted_percentage_quantity / 100.0) * self.budgeted_quantity
+            self.percent_complete_quantity = (self.earned_quantity / self.budgeted_quantity) * 100 if self.budgeted_quantity else 0
+        else:
+            self.earned_quantity = 0
+            self.percent_complete_quantity = 0
+
+# --- Routes (will be moved to routes.py or similar) ---
+@app.route('/')
+def home():
+    return "Welcome to the Earned Value Tracking Tool!"
+
+# Example route for adding a project (simplified for brevity)
+from flask import request, jsonify # Add jsonify for API-like responses
+
+@app.route('/projects', methods=['POST'])
+def add_project_route():
+    data = request.get_json()
+    if not data or not data.get('project_id_str') or not data.get('name'):
+        return jsonify({'error': 'Missing project_id_str or name'}), 400
+    try:
+        new_project = Project(project_id_str=data['project_id_str'], name=data['name'], description=data.get('description'))
+        db.session.add(new_project)
+        db.session.commit()
+        return jsonify({'message': 'Project created successfully', 'id': new_project.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/projects', methods=['GET'])
+def get_projects():
+    projects = Project.query.all()
+    return jsonify([{'id': p.id, 'project_id_str': p.project_id_str, 'name': p.name, 'description': p.description} for p in projects])
+
+# You would add more routes for other CRUD operations, reporting, etc.
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all() # Create tables if they don't exist
+    app.run(debug=True, host='0.0.0.0') # Listen on all interfaces
+

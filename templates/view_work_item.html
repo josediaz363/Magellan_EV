@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Work Item Details - {{ work_item.description }}{% endblock %}
+
+{% block content %}
+    <h1>Work Item: {{ work_item.description }}</h1>
+    <p><strong>Sub-Job:</strong> {{ work_item.sub_job.name }}</p>
+    <p><strong>Cost Code:</strong> {{ work_item.cost_code.cost_code_id_str }} - {{ work_item.cost_code.description }}</p>
+    <p><strong>Rule of Credit:</strong> {{ work_item.rule_of_credit.name }}</p>
+    <hr>
+    <h2>Progress Details</h2>
+    <p><strong>Budgeted Quantity:</strong> {{ work_item.budgeted_quantity }} {{ work_item.unit_of_measure }}</p>
+    <p><strong>Budgeted Man Hours:</strong> {{ work_item.budgeted_man_hours }}</p>
+    <hr>
+    <p><strong>Current Earned Man Hours:</strong> {{ "%.2f"|format(work_item.earned_man_hours) }}</p>
+    <p><strong>Current Earned Quantity:</strong> {{ "%.2f"|format(work_item.earned_quantity) }}</p>
+    <p><strong>Current Percent Complete (Hours):</strong> {{ "%.2f"|format(work_item.percent_complete_hours) }}%</p>
+    <p><strong>Current Percent Complete (Quantity):</strong> {{ "%.2f"|format(work_item.percent_complete_quantity) }}%</p>
+    <hr>
+
+    <h2>Update Progress</h2>
+    <form method="POST" action="{{ url_for("main.update_work_item_progress", work_item_id=work_item.id) }}">
+        {% for step in rule_steps %}
+        <div class="form-group">
+            <label for="step_progress_{{ loop.index }}">{{ step.step_name }} (Weight: {{ step.weight }}%)</label>
+            <input type="number" class="form-control" id="step_progress_{{ loop.index }}" 
+                   name="{{ step.step_name }}" 
+                   value="{{ current_progress.get(step.step_name, 0) }}" 
+                   min="0" max="100" step="0.01" required>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Update Progress</button>
+    </form>
+
+    <hr>
+    <a href="{{ url_for("main.view_project", project_id=work_item.sub_job.project_id) }}" class="btn btn-secondary">Back to Project</a>
+
+{% endblock %}
+
