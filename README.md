@@ -1,2 +1,0 @@
-# MagellanEV
-Magellan Earned Value
