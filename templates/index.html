@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Magellan EV Tracker{% endblock %}
+
+{% block content %}
+    <div class="navbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h2>Project Dashboard</h2>
+            <div class="dropdown">
+                <button class="btn btn-outline-light dropdown-toggle" type="button" id="projectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    {% if selected_project %}{{ selected_project.name }}{% else %}Select Project{% endif %}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="projectDropdown">
+                    <li><a class="dropdown-item" href="{{ url_for('main.index') }}">All Projects</a></li>
+                    {% for project in projects %}
+                        <li><a class="dropdown-item" href="{{ url_for('main.index', project_id=project.id) }}">{{ project.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Work Items Card -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Recent Work Items</h3>
+            <a href="{{ url_for('main.work_items') }}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Work Item</th>
+                            <th>Description</th>
+                            <th>Cost Code</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in work_items %}
+                            <tr>
+                                <td>{{ item.work_item_id_str }}</td>
+                                <td>{{ item.description }}</td>
+                                <td>{{ item.cost_code.cost_code_id_str if item.cost_code else 'N/A' }}</td>
+                                <td>
+                                    {% if item.status == 'completed' or item.percent_complete_hours >= 100 %}
+                                        <span class="badge badge-status badge-completed">Completed</span>
+                                    {% elif item.status == 'in_progress' or item.percent_complete_hours > 0 %}
+                                        <span class="badge badge-status badge-in-progress">In Progress</span>
+                                    {% elif item.status == 'on_hold' %}
+                                        <span class="badge badge-status badge-on-hold">On Hold</span>
+                                    {% else %}
+                                        <span class="badge badge-status badge-not-started">Not Started</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="progress">
+                                        <div class="progress-bar {% if item.is_behind_schedule %}bg-danger{% elif item.is_ahead_schedule %}bg-success{% else %}bg-primary{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {{ item.percent_complete_hours|round|int }}%;" 
+                                             aria-valuenow="{{ item.percent_complete_hours|round|int }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <div class="progress-value">{{ item.percent_complete_hours|round|int }}%</div>
+                                    <div class="progress-variance">
+                                        {% if item.variance_percent < 0 %}
+                                            <span class="text-danger">{{ item.variance_percent|round|int }}% behind</span>
+                                        {% elif item.variance_percent > 0 %}
+                                            <span class="text-success">{{ item.variance_percent|round|int }}% ahead</span>
+                                        {% else %}
+                                            <span class="text-primary">On plan</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('main.view_work_item', work_item_id=item.id) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('main.update_work_item_progress', work_item_id=item.id) }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-chart-line"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-tasks fa-4x mb-3"></i>
+                                        <h4>No work items available</h4>
+                                        <p>Add work items to track progress and earned value.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0">Overall Progress</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="metric-card text-center">
+                                <h4>Actual Progress</h4>
+                                <div class="progress-circle-container">
+                                    <div class="progress-circle" data-value="{{ overall_progress|round|int }}">
+                                        <div class="progress-circle-value">{{ overall_progress|round|int }}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="metric-card text-center">
+                                <h4>Planned Progress</h4>
+                                <div class="progress-circle-container">
+                                    <div class="progress-circle" data-value="{{ overall_planned_progress|round|int }}">
+                                        <div class="progress-circle-value">{{ overall_planned_progress|round|int }}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Schedule Variance:</span>
+                            <span class="{% if overall_variance < 0 %}text-danger{% elif overall_variance > 0 %}text-success{% else %}text-primary{% endif %}">
+                                {{ overall_variance|round|int }}%
+                                {% if overall_variance < 0 %}
+                                    (Behind Schedule)
+                                {% elif overall_variance > 0 %}
+                                    (Ahead of Schedule)
+                                {% else %}
+                                    (On Schedule)
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Schedule Performance Index (SPI):</span>
+                            <span class="{% if spi < 1 %}text-danger{% elif spi > 1 %}text-success{% else %}text-primary{% endif %}">
+                                {{ "%.2f"|format(spi) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0">Work Items Status</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="workItemsStatusChart"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <div class="status-count">
+                                    <div class="status-badge badge-not-started">{{ status_counts.not_started }}</div>
+                                    <div class="status-label">Not Started</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="status-count">
+                                    <div class="status-badge badge-in-progress">{{ status_counts.in_progress }}</div>
+                                    <div class="status-label">In Progress</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="status-count">
+                                    <div class="status-badge badge-completed">{{ status_counts.completed }}</div>
+                                    <div class="status-label">Completed</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="status-count">
+                                    <div class="status-badge badge-on-hold">{{ status_counts.on_hold }}</div>
+                                    <div class="status-label">On Hold</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Dashboard Charts -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0">Quantity Distribution</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="quantityDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0">Progress Histogram</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="progressHistogramChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0">Manpower Distribution</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="manpowerDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0">Budget by Phase</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="budgetByPhaseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Progress Circle Animation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Animate progress circles
+        document.querySelectorAll('.progress-circle').forEach(function(circle) {
+            const value = parseFloat(circle.getAttribute('data-value'));
+            const radius = 70;
+            const circumference = 2 * Math.PI * radius;
+            
+            // Create SVG
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '160');
+            svg.setAttribute('height', '160');
+            svg.setAttribute('viewBox', '0 0 160 160');
+            
+            // Background circle
+            const bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            bgCircle.setAttribute('cx', '80');
+            bgCircle.setAttribute('cy', '80');
+            bgCircle.setAttribute('r', radius);
+            bgCircle.setAttribute('fill', 'none');
+            bgCircle.setAttribute('stroke', '#e0e0e0');
+            bgCircle.setAttribute('stroke-width', '12');
+            
+            // Progress circle
+            const progressCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            progressCircle.setAttribute('cx', '80');
+            progressCircle.setAttribute('cy', '80');
+            progressCircle.setAttribute('r', radius);
+            progressCircle.setAttribute('fill', 'none');
+            progressCircle.setAttribute('stroke', '#00a8e8');
+            progressCircle.setAttribute('stroke-width', '12');
+            progressCircle.setAttribute('stroke-dasharray', circumference);
+            progressCircle.setAttribute('stroke-dashoffset', circumference);
+            progressCircle.setAttribute('transform', 'rotate(-90, 80, 80)');
+            
+            // Add to SVG
+            svg.appendChild(bgCircle);
+            svg.appendChild(progressCircle);
+            
+            // Insert SVG before the value div
+            const valueDiv = circle.querySelector('.progress-circle-value');
+            circle.insertBefore(svg, valueDiv);
+            
+            // Animate
+            setTimeout(() => {
+                const offset = circumference - (value / 100) * circumference;
+                progressCircle.style.transition = 'stroke-dashoffset 1s ease-in-out';
+                progressCircle.style.strokeDashoffset = offset;
+                
+                // Set color based on value
+                if (value < 50) {
+                    progressCircle.setAttribute('stroke', '#ff9500');
+                } else if (value < 75) {
+                    progressCircle.setAttribute('stroke', '#00a8e8');
+                } else {
+                    progressCircle.setAttribute('stroke', '#00c853');
+                }
+            }, 100);
+        });
+        
+        // Work Items Status Chart
+        const statusCtx = document.getElementById('workItemsStatusChart').getContext('2d');
+        const statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Not Started', 'In Progress', 'Completed', 'On Hold'],
+                datasets: [{
+                    data: [{{ status_counts.not_started|default(0) }}, 
+                           {{ status_counts.in_progress|default(0) }}, 
+                           {{ status_counts.completed|default(0) }}, 
+                           {{ status_counts.on_hold|default(0) }}],
+                    backgroundColor: [
+                        'rgba(108, 117, 125, 0.8)',  // Not Started - Gray
+                        'rgba(0, 123, 255, 0.8)',    // In Progress - Blue
+                        'rgba(40, 167, 69, 0.8)',    // Completed - Green
+                        'rgba(255, 193, 7, 0.8)'     // On Hold - Yellow
+                    ],
+                    borderColor: [
+                        'rgba(108, 117, 125, 1)',
+                        'rgba(0, 123, 255, 1)',
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(255, 193, 7, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+        
+        // Quantity Distribution Chart
+        const quantityCtx = document.getElementById('quantityDistributionChart').getContext('2d');
+        const quantityChart = new Chart(quantityCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ quantity_distribution.labels|tojson }},
+                datasets: [{
+                    label: 'Budgeted Quantity',
+                    data: {{ quantity_distribution.budgeted|tojson }},
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Earned Quantity',
+                    data: {{ quantity_distribution.earned|tojson }},
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Quantity'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Progress Histogram Chart
+        const progressCtx = document.getElementById('progressHistogramChart').getContext('2d');
+        const progressChart = new Chart(progressCtx, {
+            type: 'bar',
+            data: {
+                labels: ['0-10%', '11-20%', '21-30%', '31-40%', '41-50%', '51-60%', '61-70%', '71-80%', '81-90%', '91-100%'],
+                datasets: [{
+                    label: 'Work Items',
+                    data: {{ progress_histogram|tojson }},
+                    backgroundColor: 'rgba(0, 168, 232, 0.7)',
+                    borderColor: 'rgba(0, 168, 232, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Work Items'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Progress Range'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Manpower Distribution Chart
+        const manpowerCtx = document.getElementById('manpowerDistributionChart').getContext('2d');
+        const manpowerChart = new Chart(manpowerCtx, {
+            type: 'pie',
+            data: {
+                labels: {{ manpower_distribution.labels|tojson }},
+                datasets: [{
+                    data: {{ manpower_distribution.values|tojson }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)',
+                        'rgba(201, 203, 207, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(201, 203, 207, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+        
+        // Budget by Phase Chart
+        const budgetCtx = document.getElementById('budgetByPhaseChart').getContext('2d');
+        const budgetChart = new Chart(budgetCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ budget_by_phase.labels|tojson }},
+                datasets: [{
+                    label: 'Budgeted Hours',
+                    data: {{ budget_by_phase.budgeted|tojson }},
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Earned Hours',
+                    data: {{ budget_by_phase.earned|tojson }},
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Hours'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

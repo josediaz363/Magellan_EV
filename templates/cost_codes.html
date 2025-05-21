@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Cost Codes - Magellan EV Tracker{% endblock %}
+
+{% block content %}
+    <div class="navbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h2>Cost Codes</h2>
+            <div class="d-flex">
+                <a href="{{ url_for('main.add_cost_code') }}" class="btn btn-primary me-2">
+                    <i class="fas fa-plus"></i> Add Cost Code
+                </a>
+                <a href="{{ url_for('main.export_cost_codes') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-file-export"></i> Export
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Filters</h3>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('main.cost_codes') }}" method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="project" class="form-label">Project</label>
+                    <select name="project" id="project" class="form-select">
+                        <option value="all" {% if selected_project_id == 'all' %}selected{% endif %}>All Projects</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="discipline" class="form-label">Discipline</label>
+                    <select name="discipline" id="discipline" class="form-select">
+                        <option value="all" {% if selected_discipline == 'all' %}selected{% endif %}>All Disciplines</option>
+                        {% for code, name in disciplines %}
+                            <option value="{{ code }}" {% if selected_discipline == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cost Codes Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Cost Codes List</h3>
+                <span class="badge bg-primary">{{ cost_codes|length }} Cost Codes</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Cost Code ID</th>
+                            <th>Description</th>
+                            <th>Discipline</th>
+                            <th>Project</th>
+                            <th>Rule of Credit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for code in cost_codes %}
+                            <tr>
+                                <td>{{ code.cost_code_id_str }}</td>
+                                <td>{{ code.description }}</td>
+                                <td>
+                                    {% for disc_code, disc_name in disciplines %}
+                                        {% if disc_code == code.discipline %}
+                                            {{ disc_name }}
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>{{ code.project.name if code.project else 'N/A' }}</td>
+                                <td>{{ code.rule_of_credit.name if code.rule_of_credit else 'None' }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('main.edit_cost_code', cost_code_id=code.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteCostCodeModal{{ code.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Delete Modal -->
+                                    <div class="modal fade" id="deleteCostCodeModal{{ code.id }}" tabindex="-1" aria-labelledby="deleteCostCodeModalLabel{{ code.id }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="deleteCostCodeModalLabel{{ code.id }}">Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete the cost code <strong>{{ code.cost_code_id_str }}</strong>?
+                                                    <p class="text-danger mt-2">This action cannot be undone.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form action="{{ url_for('main.delete_cost_code', cost_code_id=code.id) }}" method="post">
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-clipboard-list fa-4x mb-3"></i>
+                                        <h4>No cost codes found</h4>
+                                        <p>Add cost codes to track work items by discipline and apply rules of credit.</p>
+                                        <a href="{{ url_for('main.add_cost_code') }}" class="btn btn-primary mt-2">
+                                            <i class="fas fa-plus"></i> Add Cost Code
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit form when filters change
+        document.getElementById('project').addEventListener('change', function() {
+            this.form.submit();
+        });
+        
+        document.getElementById('discipline').addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+</script>
+{% endblock %}

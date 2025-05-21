@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Update Work Items - Magellan EV Tracker{% endblock %}
+
+{% block content %}
+    <div class="navbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h2>Batch Update Work Items</h2>
+            <div>
+                <a href="{{ url_for('main.work_items') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left"></i> Back to Work Items
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Selection -->
+    <div class="filter-container mb-3">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">Project</label>
+                <select class="form-select" id="projectSelect">
+                    <option value="all">All Projects</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>{{ project.project_id_str }}: {{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Sub Job</label>
+                <select class="form-select" id="subJobSelect" {% if not selected_project_id or selected_project_id == 'all' %}disabled{% endif %}>
+                    <option value="all">All Sub Jobs</option>
+                    {% if selected_project_id and selected_project_id != 'all' %}
+                        {% for sub_job in sub_jobs %}
+                            <option value="{{ sub_job.id }}" {% if selected_sub_job_id == sub_job.id %}selected{% endif %}>{{ sub_job.sub_job_id_str }}: {{ sub_job.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-outline-light w-100" id="applySelection">Apply Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-container">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search work items...">
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" id="costCodeFilter">
+                    <option value="all">All Cost Codes</option>
+                    {% for cost_code in cost_codes %}
+                        <option value="{{ cost_code.id }}">{{ cost_code.cost_code_id_str }}: {{ cost_code.description }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-outline-light w-100" id="applyFilters">Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Update Form -->
+    <form method="post" action="{{ url_for('main.batch_update_work_items') }}">
+        <div class="data-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                </div>
+                            </th>
+                            <th>Work Item ID</th>
+                            <th>Description</th>
+                            <th>Cost Code</th>
+                            <th>Current Progress</th>
+                            <th>Status</th>
+                            <th>Planned % Complete</th>
+                            <th>Actual % Complete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workItemsTableBody">
+                        {% if work_items %}
+                            {% for item in work_items %}
+                                <tr class="work-item-row" 
+                                    data-id="{{ item.id }}"
+                                    data-project="{{ item.project_id }}"
+                                    data-subjob="{{ item.sub_job_id }}"
+                                    data-costcode="{{ item.cost_code_id }}"
+                                    data-progress="{{ item.percent_complete_hours|round|int }}"
+                                    data-status="{{ item.status if item.status else 'not_started' }}">
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-item-checkbox" type="checkbox" name="selected_items" value="{{ item.id }}">
+                                        </div>
+                                    </td>
+                                    <td>{{ item.work_item_id_str }}</td>
+                                    <td>{{ item.description }}</td>
+                                    <td>{{ item.cost_code.cost_code_id_str }}</td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" 
+                                                style="width: {{ item.percent_complete_hours|round|int }}%" 
+                                                aria-valuenow="{{ item.percent_complete_hours|round|int }}" 
+                                                aria-valuemin="0" 
+                                                aria-valuemax="100"></div>
+                                        </div>
+                                        <div class="progress-value">{{ item.percent_complete_hours|round|int }}%</div>
+                                    </td>
+                                    <td>
+                                        {% if item.status == 'completed' or item.percent_complete_hours >= 100 %}
+                                            <span class="badge badge-status badge-completed">Completed</span>
+                                        {% elif item.status == 'in_progress' or item.percent_complete_hours > 0 %}
+                                            <span class="badge badge-status badge-in-progress">In Progress</span>
+                                        {% elif item.status == 'on_hold' %}
+                                            <span class="badge badge-status badge-on-hold">On Hold</span>
+                                        {% else %}
+                                            <span class="badge badge-status badge-not-started">Not Started</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" name="planned_percent_{{ item.id }}" value="{{ item.planned_percent_complete|round|int }}" min="0" max="100">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" name="actual_percent_{{ item.id }}" value="{{ item.percent_complete_hours|round|int }}" min="0" max="100">
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-tasks fa-4x mb-3"></i>
+                                        <h4>No work items found</h4>
+                                        <p>Select a different project or sub job to see work items.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Update Options -->
+        <div class="filter-container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 class="mb-3">Update Options</h4>
+                    <div class="mb-3">
+                        <label class="form-label">Update Type</label>
+                        <select class="form-select" name="update_type" id="updateType">
+                            <option value="progress">Update Progress</option>
+                            <option value="status">Update Status</option>
+                            <option value="planned">Update Planned % Complete</option>
+                        </select>
+                    </div>
+                    <div id="statusUpdateOptions" style="display: none;">
+                        <label class="form-label">Set Status To</label>
+                        <select class="form-select" name="status_value">
+                            <option value="not_started">Not Started</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="on_hold">On Hold</option>
+                        </select>
+                    </div>
+                    <div id="plannedUpdateOptions">
+                        <label class="form-label">Planned % Complete Interval</label>
+                        <select class="form-select" name="planned_interval">
+                            <option value="days">Days</option>
+                            <option value="weeks" selected>Weeks</option>
+                            <option value="months">Months</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Updates
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Select All checkbox
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.work-item-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+    
+    // Project and Sub Job selection
+    document.getElementById('projectSelect').addEventListener('change', function() {
+        const projectId = this.value;
+        const subJobSelect = document.getElementById('subJobSelect');
+        
+        // Clear current options
+        while (subJobSelect.options.length > 1) {
+            subJobSelect.remove(1);
+        }
+        
+        if (projectId === 'all') {
+            subJobSelect.disabled = true;
+            return;
+        }
+        
+        // Fetch sub jobs for selected project
+        fetch(`/api/project/${projectId}/sub_jobs`)
+            .then(response => response.json())
+            .then(data => {
+                subJobSelect.disabled = false;
+                
+                data.forEach(subJob => {
+                    const option = document.createElement('option');
+                    option.value = subJob.id;
+                    option.textContent = `${subJob.sub_job_id_str}: ${subJob.name}`;
+                    subJobSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching sub jobs:', error));
+    });
+    
+    // Apply selection button
+    document.getElementById('applySelection').addEventListener('click', function() {
+        const projectId = document.getElementById('projectSelect').value;
+        const subJobId = document.getElementById('subJobSelect').value;
+        
+        // Redirect to filtered view
+        window.location.href = `/batch_update_work_items?project=${projectId}&sub_job=${subJobId}`;
+    });
+    
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        filterWorkItems();
+    });
+    
+    // Filter dropdowns
+    document.getElementById('costCodeFilter').addEventListener('change', function() {
+        filterWorkItems();
+    });
+    
+    // Apply filters button
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        filterWorkItems();
+    });
+    
+    // Update type selection
+    document.getElementById('updateType').addEventListener('change', function() {
+        const statusOptions = document.getElementById('statusUpdateOptions');
+        const plannedOptions = document.getElementById('plannedUpdateOptions');
+        
+        if (this.value === 'status') {
+            statusOptions.style.display = 'block';
+            plannedOptions.style.display = 'none';
+        } else if (this.value === 'planned') {
+            statusOptions.style.display = 'none';
+            plannedOptions.style.display = 'block';
+        } else {
+            statusOptions.style.display = 'none';
+            plannedOptions.style.display = 'block';
+        }
+    });
+    
+    // Filter work items function
+    function filterWorkItems() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const costCodeFilter = document.getElementById('costCodeFilter').value;
+        
+        const rows = document.querySelectorAll('.work-item-row');
+        
+        rows.forEach(row => {
+            const id = row.cells[1].textContent.toLowerCase();
+            const description = row.cells[2].textContent.toLowerCase();
+            const costCodeId = row.getAttribute('data-costcode');
+            
+            const matchesSearch = id.includes(searchTerm) || description.includes(searchTerm);
+            const matchesCostCode = costCodeFilter === 'all' || costCodeId === costCodeFilter;
+            
+            if (matchesSearch && matchesCostCode) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}
