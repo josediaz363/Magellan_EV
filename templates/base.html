@@ -15,7 +15,7 @@
         <!-- Sidebar Navigation -->
         <div class="sidebar">
             <div class="logo-container">
-                <img src="{{ url_for('static', filename='images/magellan_logo_white.png') }}" alt="Magellan EV" class="logo">
+                <img src="{{ url_for('static', filename='images/new_magellan_logo_white.png') }}" alt="Magellan EV" class="logo">
             </div>
             <nav class="nav-menu">
                 <a href="{{ url_for('main.index') }}" class="nav-item {% if request.endpoint == 'main.index' %}active{% endif %}">
@@ -24,10 +24,10 @@
                 <a href="{{ url_for('main.projects') }}" class="nav-item {% if request.endpoint == 'main.projects' %}active{% endif %}">
                     <i class="fas fa-project-diagram"></i> Projects
                 </a>
-                <a href="#" class="nav-item">
+                <a href="{{ url_for('main.work_items') }}" class="nav-item {% if request.endpoint == 'main.work_items' %}active{% endif %}">
                     <i class="fas fa-tasks"></i> Work Items
                 </a>
-                <a href="{{ url_for('main.list_cost_codes') }}" class="nav-item {% if request.endpoint == 'main.list_cost_codes' %}active{% endif %}">
+                <a href="{{ url_for('main.cost_codes') }}" class="nav-item {% if request.endpoint == 'main.cost_codes' %}active{% endif %}">
                     <i class="fas fa-code"></i> Cost Codes
                 </a>
                 <a href="{{ url_for('main.list_rules_of_credit') }}" class="nav-item {% if request.endpoint == 'main.list_rules_of_credit' %}active{% endif %}">

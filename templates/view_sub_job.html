@@ -8,7 +8,7 @@
     <a href="{{ url_for('main.view_project', project_id=sub_job.project_id) }}" class="btn btn-outline">
         <i class="fas fa-arrow-left"></i> Back to Project
     </a>
-    <a href="#" class="btn btn-primary">
+    <a href="{{ url_for('main.add_work_item', sub_job_id=sub_job.id) }}" class="btn btn-primary">
         <i class="fas fa-plus"></i> Add Work Item
     </a>
     <a href="{{ url_for('main.edit_sub_job', sub_job_id=sub_job.id) }}" class="btn btn-outline">
@@ -116,19 +116,19 @@
                                         <td>{{ work_item.work_item_id_str }}</td>
                                         <td>{{ work_item.description }}</td>
                                         <td>{{ work_item.cost_code.cost_code_id_str if work_item.cost_code else 'N/A' }}</td>
-                                        <td>{{ work_item.budgeted_man_hours }}</td>
-                                        <td>{{ work_item.earned_man_hours }}</td>
+                                        <td>{{ work_item.budgeted_hours }}</td>
+                                        <td>{{ work_item.earned_hours }}</td>
                                         <td>
                                             <div class="progress-bar">
-                                                <div class="progress" style="width: {{ work_item.percent_complete_hours }}%;"></div>
+                                                <div class="progress" style="width: {{ work_item.percent_complete }}%;"></div>
                                             </div>
-                                            <span class="progress-text">{{ work_item.percent_complete_hours|round|int }}%</span>
+                                            <span class="progress-text">{{ work_item.percent_complete }}%</span>
                                         </td>
                                         <td class="actions">
-                                            <a href="#" class="btn btn-sm btn-outline">
+                                            <a href="{{ url_for('main.view_work_item', work_item_id=work_item.id) }}" class="btn btn-sm btn-outline">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="#" class="btn btn-sm btn-outline">
+                                            <a href="{{ url_for('main.edit_work_item', work_item_id=work_item.id) }}" class="btn btn-sm btn-outline">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <button class="btn btn-sm btn-danger" onclick="confirmDeleteWorkItem('{{ work_item.id }}')">
@@ -145,7 +145,7 @@
                         <i class="fas fa-clipboard-list empty-icon"></i>
                         <h3>No work items found</h3>
                         <p>Get started by adding your first work item to this sub job.</p>
-                        <a href="#" class="btn btn-primary">
+                        <a href="{{ url_for('main.add_work_item', sub_job_id=sub_job.id) }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Add Work Item
                         </a>
                     </div>
@@ -167,6 +167,7 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" id="cancelDeleteWorkItem">Cancel</button>
                 <form id="deleteWorkItemForm" method="POST">
+                    <input type="hidden" name="from_sub_job" value="true">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </div>
@@ -265,7 +266,7 @@
         const closeBtn = document.querySelector('#deleteWorkItemModal .close');
         const cancelBtn = document.getElementById('cancelDeleteWorkItem');
         
-        deleteForm.action = `/delete_work_item/${workItemId}`;
+        deleteForm.action = `/delete_work_item/${workItemId}?from_sub_job=true`;
         modal.style.display = 'block';
         
         closeBtn.onclick = function() {
