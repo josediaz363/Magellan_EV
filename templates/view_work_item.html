@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}View Work Item - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}View Work Item{% endblock %}
+
+{% block content %}
+<div class="data-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ work_item.work_item_id_str }}</h2>
+        <div>
+            <a href="{{ url_for('main.edit_work_item', work_item_id=work_item.id) }}" class="btn-primary me-2">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{{ url_for('main.update_work_item_progress', work_item_id=work_item.id) }}" class="btn-outline-light">
+                <i class="fas fa-chart-line"></i> Update Progress
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-4">
+                <h3 class="mb-3">Details</h3>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <th style="width: 40%">Description</th>
+                            <td>{{ work_item.description }}</td>
+                        </tr>
+                        <tr>
+                            <th>Project</th>
+                            <td>{{ work_item.sub_job.project.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Sub Job</th>
+                            <td>{{ work_item.sub_job.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Area</th>
+                            <td>{{ work_item.sub_job.area }}</td>
+                        </tr>
+                        <tr>
+                            <th>Cost Code</th>
+                            <td>{{ work_item.cost_code.cost_code_id_str }} - {{ work_item.cost_code.description }}</td>
+                        </tr>
+                        <tr>
+                            <th>Discipline</th>
+                            <td>{{ work_item.cost_code.get_discipline_display() }}</td>
+                        </tr>
+                        <tr>
+                            <th>Unit of Measure</th>
+                            <td>{{ work_item.uom }}</td>
+                        </tr>
+                        <tr>
+                            <th>Drawing Number</th>
+                            <td>{{ work_item.drawing_number or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Activity ID</th>
+                            <td>{{ work_item.activity_id or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Deliverable</th>
+                            <td>{{ work_item.deliverable or 'N/A' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="mb-4">
+                <h3 class="mb-3">Progress</h3>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar" role="progressbar" style="width: {{ work_item.percent_complete }}%;" aria-valuenow="{{ work_item.percent_complete }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="progress-value text-center mt-2">{{ work_item.percent_complete }}% Complete</div>
+                
+                <table class="table mt-4">
+                    <tbody>
+                        <tr>
+                            <th style="width: 40%">Budgeted Hours</th>
+                            <td>{{ work_item.budgeted_hours }}</td>
+                        </tr>
+                        <tr>
+                            <th>Earned Hours</th>
+                            <td>{{ work_item.earned_hours }}</td>
+                        </tr>
+                        <tr>
+                            <th>Budgeted Quantity</th>
+                            <td>{{ work_item.budgeted_quantity }} {{ work_item.uom }}</td>
+                        </tr>
+                        <tr>
+                            <th>Earned Quantity</th>
+                            <td>{{ work_item.earned_quantity }} {{ work_item.uom }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if work_item.notes %}
+            <div class="mb-4">
+                <h3 class="mb-3">Notes</h3>
+                <div class="p-3" style="background-color: rgba(0, 0, 0, 0.1); border-radius: 5px;">
+                    {{ work_item.notes|nl2br }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if work_item.cost_code.rule_of_credit %}
+    <div class="mt-4">
+        <h3 class="mb-3">Rules of Credit</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Step</th>
+                        <th>Weight</th>
+                        <th>Status</th>
+                        <th>% Complete</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in work_item.get_progress_steps() %}
+                    <tr>
+                        <td>{{ step.name }}</td>
+                        <td>{{ step.weight }}%</td>
+                        <td>
+                            {% if step.percent_complete == 100 %}
+                            <span class="badge badge-status badge-completed">Completed</span>
+                            {% elif step.percent_complete > 0 %}
+                            <span class="badge badge-status badge-in-progress">In Progress</span>
+                            {% else %}
+                            <span class="badge badge-status badge-not-started">Not Started</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ step.percent_complete }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('main.work_items') }}" class="btn-outline-light">
+            <i class="fas fa-arrow-left"></i> Back to Work Items
+        </a>
+    </div>
+</div>
+{% endblock %}

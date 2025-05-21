@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Work Item - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Edit Work Item{% endblock %}
+
+{% block content %}
+<div class="data-container">
+    <form method="POST">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="sub_job_id" class="form-label">Sub Job</label>
+                    <select name="sub_job_id" id="sub_job_id" class="form-select" required>
+                        <option value="">Select Sub Job</option>
+                        {% for project in projects %}
+                        <optgroup label="{{ project.name }}">
+                            {% for sub_job in project.sub_jobs %}
+                            <option value="{{ sub_job.id }}" {% if work_item.sub_job_id == sub_job.id %}selected{% endif %}>
+                                {{ sub_job.name }} ({{ sub_job.area }})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="cost_code_id" class="form-label">Cost Code</label>
+                    <select name="cost_code_id" id="cost_code_id" class="form-select" required>
+                        <option value="">Select Cost Code</option>
+                        {% for cost_code in cost_codes %}
+                        <option value="{{ cost_code.id }}" {% if work_item.cost_code_id == cost_code.id %}selected{% endif %}>
+                            {{ cost_code.cost_code_id_str }} - {{ cost_code.description }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="work_item_id_str" class="form-label">Work Item ID</label>
+                    <input type="text" name="work_item_id_str" id="work_item_id_str" class="form-control" value="{{ work_item.work_item_id_str }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <input type="text" name="description" id="description" class="form-control" value="{{ work_item.description }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="uom" class="form-label">Unit of Measure</label>
+                    <input type="text" name="uom" id="uom" class="form-control" value="{{ work_item.uom }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="budgeted_quantity" class="form-label">Budgeted Quantity</label>
+                    <input type="number" name="budgeted_quantity" id="budgeted_quantity" class="form-control" step="0.01" value="{{ work_item.budgeted_quantity }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="budgeted_hours" class="form-label">Budgeted Hours</label>
+                    <input type="number" name="budgeted_hours" id="budgeted_hours" class="form-control" step="0.01" value="{{ work_item.budgeted_hours }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="drawing_number" class="form-label">Drawing Number</label>
+                    <input type="text" name="drawing_number" id="drawing_number" class="form-control" value="{{ work_item.drawing_number }}">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="activity_id" class="form-label">Activity ID</label>
+                    <input type="text" name="activity_id" id="activity_id" class="form-control" value="{{ work_item.activity_id }}">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="deliverable" class="form-label">Deliverable</label>
+                    <input type="text" name="deliverable" id="deliverable" class="form-control" value="{{ work_item.deliverable }}">
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea name="notes" id="notes" class="form-control" rows="3">{{ work_item.notes }}</textarea>
+                </div>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn-primary">Update Work Item</button>
+                <a href="{{ url_for('main.work_items') }}" class="btn-outline-light ms-2">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
