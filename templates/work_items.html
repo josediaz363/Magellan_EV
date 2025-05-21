@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block title %}Magellan EV - Work Items{% endblock %}
+
+{% block page_title %}Work Items{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ url_for('main.add_work_item') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Work Item
+    </a>
+    <a href="{{ url_for('main.batch_update_work_items') }}" class="btn btn-secondary">
+        <i class="fas fa-tasks"></i> Batch Update
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="filter-container">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search work items...">
+            <button id="searchButton"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="filter-dropdown">
+            <button id="filterButton" class="btn btn-outline-secondary">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            <div class="filter-content" id="filterContent">
+                <div class="filter-group">
+                    <label>Project</label>
+                    <select id="projectFilter">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Sub Job</label>
+                    <select id="subJobFilter">
+                        <option value="">All Sub Jobs</option>
+                        {% for sub_job in sub_jobs %}
+                            <option value="{{ sub_job.id }}" data-project="{{ sub_job.project_id }}">{{ sub_job.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Discipline</label>
+                    <select id="disciplineFilter">
+                        <option value="">All Disciplines</option>
+                        {% for discipline in disciplines %}
+                            <option value="{{ discipline }}">{{ discipline }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Area</label>
+                    <select id="areaFilter">
+                        <option value="">All Areas</option>
+                        {% for area in areas %}
+                            <option value="{{ area }}">{{ area }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button id="applyFilters" class="btn btn-primary">Apply</button>
+                    <button id="clearFilters" class="btn btn-secondary">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="table" id="workItemsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Description</th>
+                    <th>Cost Code</th>
+                    <th>Discipline</th>
+                    <th>Sub Job</th>
+                    <th>Budgeted Hours</th>
+                    <th>Earned Hours</th>
+                    <th>% Complete</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in work_items %}
+                    <tr data-project="{{ item.project_id }}" data-sub-job="{{ item.sub_job_id }}" data-discipline="{{ item.cost_code.discipline if item.cost_code else '' }}" data-area="{{ item.sub_job.area if item.sub_job else '' }}">
+                        <td>{{ item.work_item_id_str }}</td>
+                        <td>{{ item.description }}</td>
+                        <td>{{ item.cost_code.cost_code_id_str if item.cost_code else 'N/A' }}</td>
+                        <td>{{ item.cost_code.discipline if item.cost_code else 'N/A' }}</td>
+                        <td>{{ item.sub_job.name if item.sub_job else 'N/A' }}</td>
+                        <td>{{ item.budgeted_man_hours }}</td>
+                        <td>{{ item.earned_man_hours|round(1) }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: {{ item.percent_complete_hours|round(1) }}%;" aria-valuenow="{{ item.percent_complete_hours|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ item.percent_complete_hours|round(1) }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td class="actions">
+                            <a href="{{ url_for('main.view_work_item', work_item_id=item.id) }}" class="btn-icon" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('main.edit_work_item', work_item_id=item.id) }}" class="btn-icon" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{{ url_for('main.update_work_item_progress', work_item_id=item.id) }}" class="btn-icon" title="Update Progress">
+                                <i class="fas fa-chart-line"></i>
+                            </a>
+                            <button class="btn-icon delete-btn" title="Delete" onclick="confirmDelete({{ item.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">No work items found</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete this work item? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
+                <form id="deleteForm" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterButton = document.getElementById('filterButton');
+        const filterContent = document.getElementById('filterContent');
+        const applyFilters = document.getElementById('applyFilters');
+        const clearFilters = document.getElementById('clearFilters');
+        const projectFilter = document.getElementById('projectFilter');
+        const subJobFilter = document.getElementById('subJobFilter');
+        const disciplineFilter = document.getElementById('disciplineFilter');
+        const areaFilter = document.getElementById('areaFilter');
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const table = document.getElementById('workItemsTable');
+        const rows = table.querySelectorAll('tbody tr');
+        
+        // Toggle filter dropdown
+        filterButton.addEventListener('click', function() {
+            filterContent.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('#filterButton') && !filterContent.contains(event.target)) {
+                filterContent.classList.remove('show');
+            }
+        });
+        
+        // Update sub job options based on selected project
+        projectFilter.addEventListener('change', function() {
+            const projectId = this.value;
+            const subJobOptions = subJobFilter.querySelectorAll('option');
+            
+            subJobOptions.forEach(option => {
+                if (option.value === '') return; // Skip "All Sub Jobs" option
+                
+                const optionProjectId = option.getAttribute('data-project');
+                option.style.display = (!projectId || optionProjectId === projectId) ? '' : 'none';
+            });
+            
+            // Reset sub job selection if it's now hidden
+            if (subJobFilter.selectedIndex > 0) {
+                const selectedOption = subJobFilter.options[subJobFilter.selectedIndex];
+                if (selectedOption.style.display === 'none') {
+                    subJobFilter.value = '';
+                }
+            }
+        });
+        
+        // Apply filters
+        function applyTableFilters() {
+            const projectValue = projectFilter.value;
+            const subJobValue = subJobFilter.value;
+            const disciplineValue = disciplineFilter.value;
+            const areaValue = areaFilter.value;
+            const searchValue = searchInput.value.toLowerCase();
+            
+            rows.forEach(row => {
+                if (row.cells.length <= 1) return; // Skip "No work items found" row
+                
+                const projectMatch = !projectValue || row.getAttribute('data-project') === projectValue;
+                const subJobMatch = !subJobValue || row.getAttribute('data-sub-job') === subJobValue;
+                const disciplineMatch = !disciplineValue || row.getAttribute('data-discipline') === disciplineValue;
+                const areaMatch = !areaValue || row.getAttribute('data-area') === areaValue;
+                
+                let textMatch = true;
+                if (searchValue) {
+                    textMatch = false;
+                    for (let i = 0; i < row.cells.length - 1; i++) { // Skip actions column
+                        if (row.cells[i].textContent.toLowerCase().includes(searchValue)) {
+                            textMatch = true;
+                            break;
+                        }
+                    }
+                }
+                
+                row.style.display = (projectMatch && subJobMatch && disciplineMatch && areaMatch && textMatch) ? '' : 'none';
+            });
+        }
+        
+        applyFilters.addEventListener('click', function() {
+            applyTableFilters();
+            filterContent.classList.remove('show');
+        });
+        
+        clearFilters.addEventListener('click', function() {
+            projectFilter.value = '';
+            subJobFilter.value = '';
+            disciplineFilter.value = '';
+            areaFilter.value = '';
+            searchInput.value = '';
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+        });
+        
+        searchButton.addEventListener('click', applyTableFilters);
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                applyTableFilters();
+            }
+        });
+    });
+    
+    // Delete confirmation
+    function confirmDelete(workItemId) {
+        const modal = document.getElementById('deleteModal');
+        const cancelBtn = document.getElementById('cancelDelete');
+        const deleteForm = document.getElementById('deleteForm');
+        
+        // Set form action
+        deleteForm.action = `/delete_work_item/${workItemId}`;
+        
+        // Show the modal
+        modal.style.display = 'flex';
+        
+        // Close modal when cancel is clicked
+        cancelBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    }
+</script>
+{% endblock %}

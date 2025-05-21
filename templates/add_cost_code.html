@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Magellan EV - Add Cost Code{% endblock %}
+
+{% block page_title %}Add Cost Code{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <form method="POST" action="{{ url_for('main.add_cost_code') }}">
+            <div class="form-group">
+                <label for="cost_code_id_str">Cost Code ID *</label>
+                <input type="text" id="cost_code_id_str" name="cost_code_id_str" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description *</label>
+                <textarea id="description" name="description" class="form-control" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="discipline">Discipline *</label>
+                <select id="discipline" name="discipline" class="form-select" required>
+                    <option value="">Select Discipline</option>
+                    <option value="Civil">Civil</option>
+                    <option value="Structural">Structural</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Instrumentation">Instrumentation</option>
+                    <option value="Piping">Piping</option>
+                    <option value="HVAC">HVAC</option>
+                    <option value="Architectural">Architectural</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="unit_of_measure">Unit of Measure *</label>
+                <input type="text" id="unit_of_measure" name="unit_of_measure" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="project_id">Project *</label>
+                <select id="project_id" name="project_id" class="form-select" required>
+                    <option value="">Select Project</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="rule_of_credit_id">Rule of Credit</label>
+                <select id="rule_of_credit_id" name="rule_of_credit_id" class="form-select">
+                    <option value="">Select Rule of Credit</option>
+                    {% for rule in rules_of_credit %}
+                        <option value="{{ rule.id }}">{{ rule.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create Cost Code</button>
+                <a href="{{ url_for('main.list_cost_codes') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

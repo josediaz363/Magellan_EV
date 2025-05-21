@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Magellan EV - Edit Cost Code{% endblock %}
+
+{% block page_title %}Edit Cost Code{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <form method="POST" action="{{ url_for('main.edit_cost_code', cost_code_id=cost_code.id) }}">
+            <div class="form-group">
+                <label for="cost_code_id_str">Cost Code ID *</label>
+                <input type="text" id="cost_code_id_str" name="cost_code_id_str" class="form-control" value="{{ cost_code.cost_code_id_str }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description *</label>
+                <textarea id="description" name="description" class="form-control" required>{{ cost_code.description }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="discipline">Discipline *</label>
+                <select id="discipline" name="discipline" class="form-select" required>
+                    <option value="">Select Discipline</option>
+                    <option value="Civil" {% if cost_code.discipline == 'Civil' %}selected{% endif %}>Civil</option>
+                    <option value="Structural" {% if cost_code.discipline == 'Structural' %}selected{% endif %}>Structural</option>
+                    <option value="Mechanical" {% if cost_code.discipline == 'Mechanical' %}selected{% endif %}>Mechanical</option>
+                    <option value="Electrical" {% if cost_code.discipline == 'Electrical' %}selected{% endif %}>Electrical</option>
+                    <option value="Instrumentation" {% if cost_code.discipline == 'Instrumentation' %}selected{% endif %}>Instrumentation</option>
+                    <option value="Piping" {% if cost_code.discipline == 'Piping' %}selected{% endif %}>Piping</option>
+                    <option value="HVAC" {% if cost_code.discipline == 'HVAC' %}selected{% endif %}>HVAC</option>
+                    <option value="Architectural" {% if cost_code.discipline == 'Architectural' %}selected{% endif %}>Architectural</option>
+                    <option value="Other" {% if cost_code.discipline == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="unit_of_measure">Unit of Measure *</label>
+                <input type="text" id="unit_of_measure" name="unit_of_measure" class="form-control" value="{{ cost_code.unit_of_measure }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="project_id">Project *</label>
+                <select id="project_id" name="project_id" class="form-select" required>
+                    <option value="">Select Project</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}" {% if cost_code.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="rule_of_credit_id">Rule of Credit</label>
+                <select id="rule_of_credit_id" name="rule_of_credit_id" class="form-select">
+                    <option value="">Select Rule of Credit</option>
+                    {% for rule in rules_of_credit %}
+                        <option value="{{ rule.id }}" {% if cost_code.rule_of_credit_id == rule.id %}selected{% endif %}>{{ rule.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Cost Code</button>
+                <a href="{{ url_for('main.list_cost_codes') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
