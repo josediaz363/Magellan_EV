@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Work Item - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Edit Work Item{% endblock %}
+
+{% block content %}
+<div class="data-container">
+    <form method="POST" action="{{ url_for('main.edit_work_item', work_item_id=work_item.id) }}">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="work_item_id_str" class="form-label">Work Item ID</label>
+                    <input type="text" class="form-control" id="work_item_id_str" name="work_item_id_str" value="{{ work_item.work_item_id_str }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" required>{{ work_item.description }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="project_id" class="form-label">Project</label>
+                    <select class="form-select" id="project_id" name="project_id" required>
+                        <option value="">Select Project</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if project.id == work_item.project_id %}selected{% endif %}>{{ project.project_id_str }}: {{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="sub_job_id" class="form-label">Sub Job</label>
+                    <select class="form-select" id="sub_job_id" name="sub_job_id" required>
+                        <option value="">Select Sub Job</option>
+                        {% for sub_job in sub_jobs %}
+                        <option value="{{ sub_job.id }}" {% if sub_job.id == work_item.sub_job_id %}selected{% endif %}>{{ sub_job.sub_job_id_str }}: {{ sub_job.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="cost_code_id" class="form-label">Cost Code</label>
+                    <select class="form-select" id="cost_code_id" name="cost_code_id" required>
+                        <option value="">Select Cost Code</option>
+                        {% for cost_code in cost_codes %}
+                        <option value="{{ cost_code.id }}" {% if cost_code.id == work_item.cost_code_id %}selected{% endif %}>{{ cost_code.cost_code_id_str }}: {{ cost_code.description }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="budgeted_quantity" class="form-label">Budgeted Quantity</label>
+                    <input type="number" class="form-control" id="budgeted_quantity" name="budgeted_quantity" step="0.01" value="{{ work_item.budgeted_quantity }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="unit_of_measure" class="form-label">Unit of Measure</label>
+                    <input type="text" class="form-control" id="unit_of_measure" name="unit_of_measure" value="{{ work_item.unit_of_measure }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="budgeted_man_hours" class="form-label">Budgeted Man Hours</label>
+                    <input type="number" class="form-control" id="budgeted_man_hours" name="budgeted_man_hours" step="0.01" value="{{ work_item.budgeted_man_hours }}" required>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Update Work Item</button>
+            <a href="{{ url_for('main.work_items') }}" class="btn btn-outline-light ms-2">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const projectSelect = document.getElementById('project_id');
+        const subJobSelect = document.getElementById('sub_job_id');
+        const costCodeSelect = document.getElementById('cost_code_id');
+        
+        // Update sub jobs when project changes
+        projectSelect.addEventListener('change', function() {
+            const projectId = this.value;
+            
+            // Clear current options
+            while (subJobSelect.options.length > 1) {
+                subJobSelect.remove(1);
+            }
+            
+            // Clear cost codes
+            while (costCodeSelect.options.length > 1) {
+                costCodeSelect.remove(1);
+            }
+            
+            if (projectId) {
+                // Fetch sub jobs for selected project
+                fetch(`/api/project/${projectId}/sub_jobs`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(subJob => {
+                            const option = document.createElement('option');
+                            option.value = subJob.id;
+                            option.textContent = `${subJob.sub_job_id_str}: ${subJob.name}`;
+                            subJobSelect.appendChild(option);
+                        });
+                    });
+                
+                // Fetch cost codes for selected project
+                fetch(`/api/project/${projectId}/cost_codes`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(costCode => {
+                            const option = document.createElement('option');
+                            option.value = costCode.id;
+                            option.textContent = `${costCode.cost_code_id_str}: ${costCode.description}`;
+                            costCodeSelect.appendChild(option);
+                        });
+                    });
+            }
+        });
+    });
+</script>
+{% endblock %}
