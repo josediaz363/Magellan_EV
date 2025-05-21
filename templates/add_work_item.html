@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Work Item - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Add Work Item{% endblock %}
+
+{% block content %}
+<div class="data-container">
+    <form method="POST">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="sub_job_id" class="form-label">Sub Job</label>
+                    <select name="sub_job_id" id="sub_job_id" class="form-select" required>
+                        <option value="">Select Sub Job</option>
+                        {% for project in projects %}
+                        <optgroup label="{{ project.name }}">
+                            {% for sub_job in project.sub_jobs %}
+                            <option value="{{ sub_job.id }}">{{ sub_job.name }} ({{ sub_job.area }})</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="cost_code_id" class="form-label">Cost Code</label>
+                    <select name="cost_code_id" id="cost_code_id" class="form-select" required>
+                        <option value="">Select Cost Code</option>
+                        {% for cost_code in cost_codes %}
+                        <option value="{{ cost_code.id }}">{{ cost_code.cost_code_id_str }} - {{ cost_code.description }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="work_item_id_str" class="form-label">Work Item ID</label>
+                    <input type="text" name="work_item_id_str" id="work_item_id_str" class="form-control" value="{{ generated_id }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <input type="text" name="description" id="description" class="form-control" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="uom" class="form-label">Unit of Measure</label>
+                    <input type="text" name="uom" id="uom" class="form-control" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="budgeted_quantity" class="form-label">Budgeted Quantity</label>
+                    <input type="number" name="budgeted_quantity" id="budgeted_quantity" class="form-control" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="budgeted_hours" class="form-label">Budgeted Hours</label>
+                    <input type="number" name="budgeted_hours" id="budgeted_hours" class="form-control" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="drawing_number" class="form-label">Drawing Number</label>
+                    <input type="text" name="drawing_number" id="drawing_number" class="form-control">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="activity_id" class="form-label">Activity ID</label>
+                    <input type="text" name="activity_id" id="activity_id" class="form-control">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="deliverable" class="form-label">Deliverable</label>
+                    <input type="text" name="deliverable" id="deliverable" class="form-control">
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn-primary">Save Work Item</button>
+                <a href="{{ url_for('main.work_items') }}" class="btn-outline-light ms-2">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

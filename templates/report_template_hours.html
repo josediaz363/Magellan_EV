@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ report_title }}</title>
+    <style>
+        @font-face {
+            font-family: "Noto Sans CJK";
+            src: url("file:///usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc");
+        }
+        @font-face {
+            font-family: "WenQuanYi Zen Hei";
+            src: url("file:///usr/share/fonts/truetype/wqy/wqy-zenhei.ttc");
+        }
+        body {
+            font-family: "Noto Sans CJK", "WenQuanYi Zen Hei", sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+        @page {
+            size: letter landscape;
+            margin: 0.5in;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+        .header-left {
+            text-align: left;
+        }
+        .header-center {
+            text-align: center;
+        }
+        .header-right {
+            text-align: right;
+            font-size: 8pt;
+        }
+        .report-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .project-info {
+            font-size: 10pt;
+            margin-bottom: 5px;
+        }
+        .report-subtitle {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .work-item-col {
+            width: 10%; /* Thinner */
+        }
+        .description-col {
+            width: 15%; /* Thinner */
+        }
+        .uom-col {
+            width: 5%;
+        }
+        .hours-col, .quantity-col {
+            width: 8%;
+            text-align: right;
+        }
+        .percent-col {
+            width: 8%;
+            text-align: right;
+        }
+        .roc-header {
+            text-align: center;
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+        .roc-step-col {
+            width: 6%; /* Wider */
+            text-align: center;
+            font-size: 8pt; /* 2 points smaller */
+            vertical-align: bottom; /* Align step names at the bottom */
+            white-space: normal; /* Allow wrapping */
+            word-wrap: break-word;
+        }
+        .roc-step-value {
+            text-align: right;
+        }
+        .group-header {
+            background-color: #e0e0e0;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        .group-header td {
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="report-title">Magellan EV Tracker</div>
+            <div class="report-subtitle">{{ report_subtitle }}</div>
+        </div>
+        <div class="header-center">
+            <div class="project-info">{{ project.name }}</div>
+            <div class="project-info">{{ project.project_id_str }}</div>
+        </div>
+        <div class="header-right">
+            <div>Page <span class="page"></span> of <span class="topage"></span></div>
+            <div>Progress as of: {{ generation_date }}</div>
+            <div>Generated on: {{ generation_date }}</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="work-item-col">Work Item</th>
+                <th class="description-col">Description</th>
+                <th class="uom-col">UoM</th>
+                <th class="hours-col">Budgeted Hours</th>
+                <th class="hours-col">Earned Hours</th>
+                <th class="percent-col">% Complete</th>
+                {% if max_steps > 0 %}
+                    <th colspan="{{ max_steps }}" class="roc-header">Rules of Credit</th>
+                {% endif %}
+            </tr>
+            {% if max_steps > 0 %}
+            <tr>
+                <th colspan="6"></th> {# Empty cells for alignment #}
+                {% for i in range(max_steps) %}
+                    <th class="roc-step-col">{{ roc_step_headers[i] if i < roc_step_headers|length else "" }}</th>
+                {% endfor %}
+            </tr>
+            {% endif %}
+        </thead>
+        <tbody>
+            {% for group_key, items in grouped_data.items() %}
+                {% if group_by == "sub_job" %}
+                    <tr class="group-header">
+                        <td colspan="{{ 6 + max_steps }}">Sub Job: {{ items[0].sub_job.name }} ({{ items[0].sub_job.sub_job_id_str }})</td>
+                    </tr>
+                {% endif %}
+                {% for item in items %}
+                    <tr>
+                        <td class="work-item-col">{{ item.work_item_id_str }}</td>
+                        <td class="description-col">{{ item.description }}</td>
+                        <td class="uom-col">{{ item.unit_of_measure }}</td>
+                        <td class="hours-col">{{ "%.2f"|format(item.budgeted_man_hours) }}</td>
+                        <td class="hours-col">{{ "%.2f"|format(item.earned_man_hours) }}</td>
+                        <td class="percent-col">{{ "%.1f"|format(item.percent_complete_hours) }}%</td>
+                        {% if max_steps > 0 %}
+                            {% set item_progress = item.get_steps_progress() %}
+                            {% set item_steps = item.cost_code.rule_of_credit.get_steps() if item.cost_code and item.cost_code.rule_of_credit else [] %}
+                            {% set step_map = {step["name"]: step for step in item_steps} %}
+                            {% for i in range(max_steps) %}
+                                <td class="roc-step-value">
+                                    {% set step_name = roc_step_headers[i] if i < roc_step_headers|length else None %}
+                                    {% if step_name and step_name in step_map %}
+                                        {{ "%.1f"|format(item_progress.get(step_name, 0)) }}%
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ 6 + max_steps }}" style="text-align: center; padding: 20px;">No data available for this report.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
