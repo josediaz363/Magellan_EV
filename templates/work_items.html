@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Work Items - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Work Items{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ url_for('main.add_work_item') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Work Item
+    </a>
+{% endblock %}
+
+{% block content %}
+    <!-- Filters -->
+    <div class="filters-container">
+        <form method="GET" action="{{ url_for('main.work_items') }}" class="filters-form">
+            <div class="filter-group">
+                <label for="project_id">Project</label>
+                <select name="project_id" id="project_id" class="form-control">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}" {% if request.args.get('project_id')|int == project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="sub_job_id">Sub Job</label>
+                <select name="sub_job_id" id="sub_job_id" class="form-control">
+                    <option value="">All Sub Jobs</option>
+                    {% for sub_job in sub_jobs %}
+                        <option value="{{ sub_job.id }}" {% if request.args.get('sub_job_id')|int == sub_job.id %}selected{% endif %}>
+                            {{ sub_job.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="discipline">Discipline</label>
+                <select name="discipline" id="discipline" class="form-control">
+                    <option value="">All Disciplines</option>
+                    {% for discipline in disciplines %}
+                        <option value="{{ discipline }}" {% if request.args.get('discipline') == discipline %}selected{% endif %}>
+                            {{ discipline }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="area">Area</label>
+                <select name="area" id="area" class="form-control">
+                    <option value="">All Areas</option>
+                    {% for area in areas %}
+                        <option value="{{ area }}" {% if request.args.get('area') == area %}selected{% endif %}>
+                            {{ area }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="search">Search</label>
+                <div class="search-container">
+                    <input type="text" name="search" id="search" class="form-control" placeholder="Search work items..." value="{{ request.args.get('search', '') }}">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Work Items Table -->
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Description</th>
+                    <th>Project</th>
+                    <th>Sub Job</th>
+                    <th>Cost Code</th>
+                    <th>Budgeted Hours</th>
+                    <th>Earned Hours</th>
+                    <th>Progress</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if work_items %}
+                    {% for item in work_items %}
+                        <tr>
+                            <td>{{ item.work_item_id_str }}</td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.project.name if item.project else 'N/A' }}</td>
+                            <td>{{ item.sub_job.name if item.sub_job else 'N/A' }}</td>
+                            <td>{{ item.cost_code.cost_code_id_str if item.cost_code else 'N/A' }}</td>
+                            <td>{{ item.budgeted_man_hours }}</td>
+                            <td>{{ item.earned_man_hours }}</td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: {{ item.progress }}%"></div>
+                                    <span class="progress-text">{{ item.progress }}%</span>
+                                </div>
+                            </td>
+                            <td class="actions">
+                                <a href="{{ url_for('main.view_work_item', work_item_id=item.id) }}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('main.edit_work_item', work_item_id=item.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{{ url_for('main.update_work_item_progress', work_item_id=item.id) }}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-chart-line"></i>
+                                </a>
+                                <button class="btn btn-sm btn-danger" onclick="confirmDelete({{ item.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">No work items found</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Confirm Delete</h2>
+            <p>Are you sure you want to delete this work item? This action cannot be undone.</p>
+            <form id="deleteForm" method="POST">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelDelete">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // Delete confirmation modal
+        const modal = document.getElementById('deleteModal');
+        const closeBtn = document.querySelector('.close');
+        const cancelBtn = document.getElementById('cancelDelete');
+        const deleteForm = document.getElementById('deleteForm');
+
+        function confirmDelete(workItemId) {
+            // Show modal
+            modal.style.display = 'block';
+            
+            // Set form action
+            deleteForm.action = `/delete_work_item/${workItemId}`;
+        }
+
+        // Close modal when X is clicked
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        // Close modal when Cancel is clicked
+        cancelBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Filter form submission
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectSelect = document.getElementById('project_id');
+            const subJobSelect = document.getElementById('sub_job_id');
+            const disciplineSelect = document.getElementById('discipline');
+            const areaSelect = document.getElementById('area');
+            
+            // Auto-submit form when filters change
+            projectSelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+            
+            subJobSelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+            
+            disciplineSelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+            
+            areaSelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+    </script>
+{% endblock %}
