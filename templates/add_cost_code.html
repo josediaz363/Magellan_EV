@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Add Cost Code - Magellan EV Tracker{% endblock %}
+
+{% block content %}
+    <div class="navbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h2>Add Cost Code</h2>
+            <a href="{{ url_for('main.cost_codes') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Cost Codes
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">Cost Code Details</h3>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('main.add_cost_code') }}" method="post">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="cost_code_id_str" class="form-label">Cost Code ID <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="cost_code_id_str" name="cost_code_id_str" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="discipline" class="form-label">Discipline <span class="text-danger">*</span></label>
+                        <select class="form-select" id="discipline" name="discipline" required>
+                            <option value="" selected disabled>Select Discipline</option>
+                            {% for code, name in disciplines %}
+                                <option value="{{ code }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="project_id" class="form-label">Project <span class="text-danger">*</span></label>
+                        <select class="form-select" id="project_id" name="project_id" required>
+                            <option value="" selected disabled>Select Project</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="rule_of_credit_id" class="form-label">Rule of Credit</label>
+                        <select class="form-select" id="rule_of_credit_id" name="rule_of_credit_id">
+                            <option value="">None</option>
+                            {% for rule in rules %}
+                                <option value="{{ rule.id }}">{{ rule.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Cost Code
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-generate cost code ID based on discipline and project
+        const disciplineSelect = document.getElementById('discipline');
+        const projectSelect = document.getElementById('project_id');
+        const costCodeInput = document.getElementById('cost_code_id_str');
+        
+        function updateCostCodeId() {
+            if (disciplineSelect.value && projectSelect.value) {
+                const disciplineCode = disciplineSelect.value;
+                const projectOption = projectSelect.options[projectSelect.selectedIndex];
+                const projectName = projectOption.text.substring(0, 3).toUpperCase();
+                
+                // Generate a random 4-digit number
+                const randomNum = Math.floor(1000 + Math.random() * 9000);
+                
+                costCodeInput.value = `${disciplineCode}-${projectName}-${randomNum}`;
+            }
+        }
+        
+        disciplineSelect.addEventListener('change', updateCostCodeId);
+        projectSelect.addEventListener('change', updateCostCodeId);
+    });
+</script>
+{% endblock %}
