@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Magellan EV Tracker{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='images/magellan_logo_white.png') }}" alt="Magellan EV" class="logo">
+            </div>
+            <nav class="nav-menu">
+                <a href="{{ url_for('main.index') }}" class="nav-item {% if request.endpoint == 'main.index' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="{{ url_for('main.projects') }}" class="nav-item {% if request.endpoint == 'main.projects' %}active{% endif %}">
+                    <i class="fas fa-project-diagram"></i> Projects
+                </a>
+                <a href="{{ url_for('main.work_items') }}" class="nav-item {% if request.endpoint == 'main.work_items' %}active{% endif %}">
+                    <i class="fas fa-tasks"></i> Work Items
+                </a>
+                <a href="{{ url_for('main.list_cost_codes') }}" class="nav-item {% if request.endpoint == 'main.list_cost_codes' %}active{% endif %}">
+                    <i class="fas fa-code"></i> Cost Codes
+                </a>
+                <a href="{{ url_for('main.list_rules_of_credit') }}" class="nav-item {% if request.endpoint == 'main.list_rules_of_credit' %}active{% endif %}">
+                    <i class="fas fa-list-check"></i> Rules of Credit
+                </a>
+                <!-- Temporarily comment out Reports link until functionality is implemented -->
+                <!-- 
+                <a href="{{ url_for('main.reports_index') }}" class="nav-item {% if request.endpoint == 'main.reports_index' %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i> Reports
+                </a>
+                -->
+                <a href="#" class="nav-item">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="page-title">
+                    <h1>{% block page_title %}{% endblock %}</h1>
+                </div>
+                <div class="header-actions">
+                    {% block header_actions %}{% endblock %}
+                </div>
+            </header>
+
+            <!-- Flash Messages -->
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Main Content -->
+            <div class="content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Close flash messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 500);
+                }, 5000);
+            });
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
