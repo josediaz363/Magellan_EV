@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">View Sub Job: {{ sub_job.name }}</h1>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Sub Job Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Sub Job ID:</strong> {{ sub_job.sub_job_id_str }}</p>
+                            <p><strong>Project:</strong> <a href="{{ url_for('main.view_project', project_id=sub_job.project_id) }}">{{ sub_job.project.name }}</a></p>
+                            <p><strong>Area:</strong> {{ sub_job.area }}</p>
+                            <p><strong>Description:</strong> {{ sub_job.description }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Budgeted Hours:</strong> {{ "%.2f"|format(total_budgeted_hours) }}</p>
+                            <p><strong>Earned Hours:</strong> {{ "%.2f"|format(total_earned_hours) }}</p>
+                            <p><strong>Budgeted Quantity:</strong> {{ "%.2f"|format(total_budgeted_quantity) }}</p>
+                            <p><strong>Earned Quantity:</strong> {{ "%.2f"|format(total_earned_quantity) }}</p>
+                            <p><strong>Progress:</strong> {{ "%.1f%%"|format(overall_progress) }}</p>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('main.edit_sub_job', sub_job_id=sub_job.id) }}" class="btn btn-primary">Edit Sub Job</a>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteSubJobModal">Delete Sub Job</button>
+                                <a href="{{ url_for('main.add_work_item', sub_job_id=sub_job.id) }}" class="btn btn-success">Add Work Item</a>
+                                
+                                <!-- Export Dropdown -->
+                                <div class="btn-group" role="group">
+                                    <button id="exportDropdown" type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Export Reports
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                        <li><a class="dropdown-item" href="{{ url_for('main.export_hours_pdf_sub_job', project_id=sub_job.project_id, sub_job_id=sub_job.id) }}">Hours Report (PDF)</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('main.export_quantities_pdf_sub_job', project_id=sub_job.project_id, sub_job_id=sub_job.id) }}">Quantities Report (PDF)</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('main.export_hours_excel_sub_job', project_id=sub_job.project_id, sub_job_id=sub_job.id) }}">Hours Report (Excel)</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('main.export_quantities_excel_sub_job', project_id=sub_job.project_id, sub_job_id=sub_job.id) }}">Quantities Report (Excel)</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Work Items</h5>
+                </div>
+                <div class="card-body">
+                    {% if work_items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Description</th>
+                                    <th>Cost Code</th>
+                                    <th>Budgeted Hours</th>
+                                    <th>Earned Hours</th>
+                                    <th>Budgeted Quantity</th>
+                                    <th>Earned Quantity</th>
+                                    <th>Progress</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for work_item in work_items %}
+                                <tr>
+                                    <td>{{ work_item.work_item_id_str }}</td>
+                                    <td>{{ work_item.description }}</td>
+                                    <td>{{ work_item.cost_code.cost_code_id_str }}</td>
+                                    <td>{{ "%.2f"|format(work_item.budgeted_man_hours or 0) }}</td>
+                                    <td>{{ "%.2f"|format(work_item.earned_man_hours or 0) }}</td>
+                                    <td>{{ "%.2f"|format(work_item.budgeted_quantity or 0) }} {{ work_item.unit_of_measure }}</td>
+                                    <td>{{ "%.2f"|format(work_item.earned_quantity or 0) }} {{ work_item.unit_of_measure }}</td>
+                                    <td>{{ "%.1f%%"|format(work_item.percent_complete_hours or 0) }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('main.view_work_item', work_item_id=work_item.id) }}" class="btn btn-sm btn-primary">View</a>
+                                            <a href="{{ url_for('main.edit_work_item', work_item_id=work_item.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                                            <a href="{{ url_for('main.update_work_item_progress', work_item_id=work_item.id) }}" class="btn btn-sm btn-info">Update Progress</a>
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteWorkItemModal{{ work_item.id }}">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p>No work items found for this sub job.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Sub Job Modal -->
+<div class="modal fade" id="deleteSubJobModal" tabindex="-1" aria-labelledby="deleteSubJobModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteSubJobModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this sub job? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('main.delete_sub_job', sub_job_id=sub_job.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Work Item Modals -->
+{% for work_item in work_items %}
+<div class="modal fade" id="deleteWorkItemModal{{ work_item.id }}" tabindex="-1" aria-labelledby="deleteWorkItemModalLabel{{ work_item.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteWorkItemModalLabel{{ work_item.id }}">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the work item "{{ work_item.work_item_id_str }}"? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('main.delete_work_item', work_item_id=work_item.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
