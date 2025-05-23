@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}View Work Item - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Work Item: {{ work_item.work_item_id_str }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ url_for('main.view_sub_job', sub_job_id=work_item.sub_job_id) }}" class="btn btn-outline">
+        <i class="fas fa-arrow-left"></i> Back to Sub Job
+    </a>
+    <a href="{{ url_for('main.edit_work_item', work_item_id=work_item.id) }}" class="btn btn-outline">
+        <i class="fas fa-edit"></i> Edit Work Item
+    </a>
+    <a href="{{ url_for('main.update_work_item_progress', work_item_id=work_item.id) }}" class="btn btn-primary">
+        <i class="fas fa-tasks"></i> Update Progress
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="content-container">
+        <!-- Work Item Details Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Work Item Details</h2>
+            </div>
+            <div class="card-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">ID:</span>
+                        <span class="detail-value">{{ work_item.work_item_id_str }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Description:</span>
+                        <span class="detail-value">{{ work_item.description }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Project:</span>
+                        <span class="detail-value">{{ work_item.project.name }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Sub Job:</span>
+                        <span class="detail-value">{{ work_item.sub_job.name }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Cost Code:</span>
+                        <span class="detail-value">{{ work_item.cost_code.cost_code_id_str }} - {{ work_item.cost_code.description }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Budgeted Quantity:</span>
+                        <span class="detail-value">{{ work_item.budgeted_quantity }} {{ work_item.unit_of_measure }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Budgeted Man Hours:</span>
+                        <span class="detail-value">{{ work_item.budgeted_man_hours }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Progress</h2>
+            </div>
+            <div class="card-body">
+                <div class="progress-metrics">
+                    <div class="metric-card">
+                        <div class="metric-value">{{ work_item.percent_complete_hours|round|int }}%</div>
+                        <div class="metric-label">Overall Progress</div>
+                        <div class="progress-bar large">
+                            <div class="progress" style="width: {{ work_item.percent_complete_hours }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">{{ work_item.earned_man_hours|round(2) }}</div>
+                        <div class="metric-label">Earned Hours</div>
+                        <div class="progress-bar large">
+                            <div class="progress" style="width: {{ (work_item.earned_man_hours / work_item.budgeted_man_hours * 100) if work_item.budgeted_man_hours > 0 else 0 }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">{{ work_item.earned_quantity|round(2) }}</div>
+                        <div class="metric-label">Earned Quantity</div>
+                        <div class="progress-bar large">
+                            <div class="progress" style="width: {{ (work_item.earned_quantity / work_item.budgeted_quantity * 100) if work_item.budgeted_quantity > 0 else 0 }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rule of Credit Steps Progress -->
+                {% if rule_steps %}
+                    <div class="rule-steps-progress">
+                        <h3>Rule of Credit Steps</h3>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Step</th>
+                                        <th>Weight</th>
+                                        <th>Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for step in rule_steps %}
+                                        <tr>
+                                            <td>{{ step.name }}</td>
+                                            <td>{{ step.weight }}%</td>
+                                            <td>
+                                                <div class="progress-bar">
+                                                    <div class="progress" style="width: {{ step_progress.get(step.name, 0) }}%;"></div>
+                                                </div>
+                                                <span class="progress-text">{{ step_progress.get(step.name, 0)|round|int }}%</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>No rule of credit steps defined for this work item's cost code.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
