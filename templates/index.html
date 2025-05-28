@@ -1,0 +1,774 @@
+{% extends "base.html" %}
+
+{% block title %}Magellan EV - Dashboard{% endblock %}
+
+{% block content %}
+    <div class="navbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h2>Project Dashboard</h2>
+            <div class="d-flex align-items-center">
+                <select class="form-select bg-dark text-light me-2" id="projectSelector">
+                    <option>Select Project</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+                <a href="{{ url_for('main.settings') }}" class="btn btn-outline-light">
+                    <i class="fas fa-cog"></i> Dashboard Settings
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Metrics -->
+    <div class="dashboard-metrics-grid">
+        <div class="metric-card">
+            <div class="title">To Date Actual % Complete</div>
+            <div class="value" style="color: var(--accent-green);">0.0%</div>
+        </div>
+        <div class="metric-card">
+            <div class="title">To Date Plan % Complete</div>
+            <div class="value" style="color: var(--accent-green);">0.0%</div>
+            <div class="mt-2">
+                <button class="btn btn-sm btn-outline-light" id="updatePlannedBtn" data-bs-toggle="modal" data-bs-target="#plannedCompleteModal">
+                    <i class="fas fa-edit"></i> Update
+                </button>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="title">Weekly Actual % Complete</div>
+            <div class="value" style="color: var(--accent-green);">0.0%</div>
+        </div>
+        <div class="metric-card">
+            <div class="title">Weekly Plan % Complete</div>
+            <div class="value" style="color: var(--accent-green);">0.0%</div>
+        </div>
+    </div>
+
+    <!-- Overall Progress Section -->
+    <div class="overall-progress-section" id="section-overall_progress">
+        <div class="metric-card text-center">
+            <div class="title">OVERALL PROGRESS</div>
+            <div class="progress-circle">
+                <svg width="150" height="150" viewBox="0 0 150 150">
+                    <circle cx="75" cy="75" r="60" fill="var(--primary-bg)"/>
+                    <circle cx="75" cy="75" r="50" stroke="var(--accent-green)" stroke-width="20" fill="none" 
+                            stroke-dasharray="314" stroke-dashoffset="314" id="progressCircle" />
+                </svg>
+                <div class="percentage" id="progressPercentage">0.0%</div>
+            </div>
+        </div>
+        <div class="chart-container" id="section-schedule_performance">
+            <div class="title">Schedule Performance Index</div>
+            <canvas id="scheduleChart" height="250"></canvas>
+        </div>
+    </div>
+
+    <!-- Quantity Distribution and Progress Histogram -->
+    <div class="row mb-4">
+        <div class="col-md-6" id="section-quantity_distribution">
+            <div class="chart-container">
+                <div class="title">Quantity Distribution</div>
+                <canvas id="quantityChart" height="250"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6" id="section-progress_histogram">
+            <div class="chart-container">
+                <div class="title">Progress Histogram</div>
+                <canvas id="progressHistogram" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget and Manpower -->
+    <div class="row mb-4">
+        <div class="col-md-6" id="section-budget_by_phase">
+            <div class="chart-container">
+                <div class="title">Budget by Phase</div>
+                <canvas id="budgetChart" height="250"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6" id="section-manpower_distribution">
+            <div class="chart-container">
+                <div class="title">Manpower Distribution</div>
+                <canvas id="manpowerChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Items Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="data-table">
+                <div class="title">Recent Work Items</div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Work Item</th>
+                                <th>Cost Code</th>
+                                <th>Budgeted Quantity</th>
+                                <th>Earned Quantity</th>
+                                <th>Progress</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in work_items %}
+                            <tr>
+                                <td>{{ item.description }}</td>
+                                <td>{{ item.cost_code.cost_code_id_str if item.cost_code else 'N/A' }}</td>
+                                <td>{{ item.budgeted_quantity }} {{ item.unit_of_measure }}</td>
+                                <td>{{ item.earned_quantity }} {{ item.unit_of_measure }}</td>
+                                <td>{{ item.percent_complete_quantity }}%</td>
+                                <td>
+                                    <a href="{{ url_for('main.view_work_item', work_item_id=item.id) }}" class="btn btn-sm btn-outline-light">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">No work items available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Planned % Complete Modal -->
+    <div class="modal fade" id="plannedCompleteModal" tabindex="-1" aria-labelledby="plannedCompleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="plannedCompleteModalLabel">Update Planned % Complete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="plannedCompleteForm">
+                        <div class="mb-3">
+                            <label for="plannedCompleteValue" class="form-label">Planned % Complete:</label>
+                            <input type="number" class="form-control bg-dark text-light" id="plannedCompleteValue" min="0" max="100" step="0.1" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Interval Type:</label>
+                            <div class="form-text mb-2" id="intervalTypeDisplay">Using daily intervals (from settings)</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="savePlannedComplete">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Chart objects
+    let quantityChart, progressHistogram, scheduleChart, manpowerChart, budgetChart;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load dashboard settings
+        loadDashboardSettings();
+        
+        // Initialize progress circle
+        updateProgressCircle(0);
+        
+        // Initialize charts based on settings
+        initializeCharts();
+        
+        // Project selector change event
+        document.getElementById('projectSelector').addEventListener('change', function() {
+            const projectId = this.value;
+            if (projectId && projectId !== 'Select Project') {
+                // In a real implementation, this would fetch project data via AJAX
+                // For now, we'll just update the progress circle with a random value
+                const progress = Math.random() * 100;
+                updateProgressCircle(progress);
+                
+                // Update charts with new data
+                updateCharts();
+            }
+        });
+        
+        // Planned % Complete modal
+        document.getElementById('savePlannedComplete').addEventListener('click', function() {
+            const plannedValue = document.getElementById('plannedCompleteValue').value;
+            
+            // Update the displayed value
+            document.querySelector('.metric-card:nth-child(2) .value').textContent = plannedValue + '%';
+            
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('plannedCompleteModal'));
+            modal.hide();
+            
+            // In a real implementation, this would save the value to the database
+        });
+    });
+    
+    function loadDashboardSettings() {
+        // Load saved settings from localStorage
+        const savedSettings = localStorage.getItem('dashboardSettings');
+        let settings = {
+            charts: ['overall_progress', 'quantity_distribution', 'progress_histogram', 'schedule_performance', 'manpower_distribution', 'budget_by_phase'],
+            plannedCompleteInterval: 'daily'
+        };
+        
+        if (savedSettings) {
+            const parsedSettings = JSON.parse(savedSettings);
+            settings = {
+                charts: parsedSettings.charts || settings.charts,
+                plannedCompleteInterval: parsedSettings.plannedCompleteInterval || settings.plannedCompleteInterval
+            };
+        }
+        
+        // Apply chart visibility settings
+        settings.charts.forEach(chart => {
+            const section = document.getElementById('section-' + chart);
+            if (section) {
+                section.style.display = 'block';
+            }
+        });
+        
+        // Hide charts not in the settings
+        const allChartSections = ['overall_progress', 'quantity_distribution', 'progress_histogram', 'schedule_performance', 'manpower_distribution', 'budget_by_phase'];
+        allChartSections.forEach(chart => {
+            if (!settings.charts.includes(chart)) {
+                const section = document.getElementById('section-' + chart);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            }
+        });
+        
+        // Set interval type display
+        const intervalMap = {
+            'daily': 'Daily Intervals',
+            'weekly': 'Weekly Intervals',
+            'monthly': 'Monthly Intervals'
+        };
+        document.getElementById('intervalTypeDisplay').textContent = 
+            `Using ${intervalMap[settings.plannedCompleteInterval]} (from settings)`;
+    }
+    
+    function initializeCharts() {
+        // Initialize all charts if their containers are visible
+        if (document.getElementById('section-quantity_distribution').style.display !== 'none') {
+            initQuantityDistributionChart();
+        }
+        
+        if (document.getElementById('section-progress_histogram').style.display !== 'none') {
+            initProgressHistogram();
+        }
+        
+        if (document.getElementById('section-schedule_performance').style.display !== 'none') {
+            initSchedulePerformanceChart();
+        }
+        
+        if (document.getElementById('section-manpower_distribution').style.display !== 'none') {
+            initManpowerDistributionChart();
+        }
+        
+        if (document.getElementById('section-budget_by_phase').style.display !== 'none') {
+            initBudgetByPhaseChart();
+        }
+    }
+    
+    function updateCharts() {
+        // Update all initialized charts
+        if (quantityChart) updateQuantityDistributionChart();
+        if (progressHistogram) updateProgressHistogram();
+        if (scheduleChart) updateSchedulePerformanceChart();
+        if (manpowerChart) updateManpowerDistributionChart();
+        if (budgetChart) updateBudgetByPhaseChart();
+    }
+    
+    function updateProgressCircle(percentage) {
+        // Update the progress circle
+        const circle = document.getElementById('progressCircle');
+        const percentageText = document.getElementById('progressPercentage');
+        
+        // Calculate the stroke-dashoffset based on percentage
+        // The full circle has a stroke-dasharray of 314 (2 * PI * 50)
+        const circumference = 2 * Math.PI * 50;
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        // Update the circle and text
+        circle.style.strokeDashoffset = offset;
+        percentageText.textContent = percentage.toFixed(1) + '%';
+    }
+    
+    // Quantity Distribution Chart
+    function initQuantityDistributionChart() {
+        const ctx = document.getElementById('quantityChart');
+        if (!ctx) return;
+        
+        const ctxObj = ctx.getContext('2d');
+        
+        // Sample data - in a real implementation, this would come from the backend
+        const data = {
+            labels: ['Civil', 'Electrical', 'Mechanical', 'Piping', 'Structural'],
+            datasets: [{
+                label: 'Budgeted Quantity',
+                data: [1200, 850, 1500, 750, 950],
+                backgroundColor: 'rgba(0, 166, 126, 0.7)',
+                borderColor: 'rgba(0, 166, 126, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Earned Quantity',
+                data: [800, 600, 1200, 500, 700],
+                backgroundColor: 'rgba(0, 200, 150, 0.4)',
+                borderColor: 'rgba(0, 200, 150, 1)',
+                borderWidth: 1
+            }]
+        };
+        
+        quantityChart = new Chart(ctxObj, {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += context.parsed.y;
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateQuantityDistributionChart() {
+        if (!quantityChart) return;
+        
+        // In a real implementation, this would fetch new data based on the selected project
+        // For now, we'll just update with random values
+        
+        const newBudgetedData = [];
+        const newEarnedData = [];
+        
+        for (let i = 0; i < 5; i++) {
+            const budgeted = Math.floor(Math.random() * 2000) + 500;
+            const earned = Math.floor(budgeted * (Math.random() * 0.8 + 0.1)); // 10-90% of budgeted
+            
+            newBudgetedData.push(budgeted);
+            newEarnedData.push(earned);
+        }
+        
+        quantityChart.data.datasets[0].data = newBudgetedData;
+        quantityChart.data.datasets[1].data = newEarnedData;
+        quantityChart.update();
+    }
+    
+    // Progress Histogram
+    function initProgressHistogram() {
+        const ctx = document.getElementById('progressHistogram');
+        if (!ctx) return;
+        
+        const ctxObj = ctx.getContext('2d');
+        
+        // Sample data - in a real implementation, this would come from the backend
+        // This represents the count of work items in each progress percentage range
+        const data = {
+            labels: ['0-10%', '11-20%', '21-30%', '31-40%', '41-50%', '51-60%', '61-70%', '71-80%', '81-90%', '91-100%'],
+            datasets: [{
+                label: 'Work Items',
+                data: [5, 8, 12, 15, 20, 25, 18, 10, 7, 30],
+                backgroundColor: 'rgba(0, 166, 126, 0.7)',
+                borderColor: 'rgba(0, 166, 126, 1)',
+                borderWidth: 1
+            }]
+        };
+        
+        progressHistogram = new Chart(ctxObj, {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Work Items',
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Progress Range',
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y} Work Items`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateProgressHistogram() {
+        if (!progressHistogram) return;
+        
+        // In a real implementation, this would fetch new data based on the selected project
+        // For now, we'll just update with random values
+        
+        const newData = [];
+        
+        for (let i = 0; i < 10; i++) {
+            // Generate random number of work items for each progress range
+            newData.push(Math.floor(Math.random() * 30) + 1);
+        }
+        
+        progressHistogram.data.datasets[0].data = newData;
+        progressHistogram.update();
+    }
+    
+    // Schedule Performance Index Chart
+    function initSchedulePerformanceChart() {
+        const ctx = document.getElementById('scheduleChart');
+        if (!ctx) return;
+        
+        const ctxObj = ctx.getContext('2d');
+        
+        // Sample data - in a real implementation, this would come from the backend
+        const data = {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+            datasets: [{
+                label: 'SPI',
+                data: [1.2, 1.3, 1.1, 0.9, 0.8, 1.0, 1.1],
+                borderColor: '#00a67e',
+                backgroundColor: 'transparent',
+                tension: 0.4
+            }, {
+                label: 'Plan',
+                data: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'transparent',
+                borderDash: [5, 5]
+            }]
+        };
+        
+        scheduleChart = new Chart(ctxObj, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 0.5,
+                        max: 1.5,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += context.parsed.y.toFixed(2);
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateSchedulePerformanceChart() {
+        if (!scheduleChart) return;
+        
+        // In a real implementation, this would fetch new data based on the selected project
+        // For now, we'll just update with random values
+        
+        const newSpiData = [];
+        
+        for (let i = 0; i < 7; i++) {
+            // Generate random SPI values between 0.7 and 1.3
+            newSpiData.push(0.7 + Math.random() * 0.6);
+        }
+        
+        scheduleChart.data.datasets[0].data = newSpiData;
+        scheduleChart.update();
+    }
+    
+    // Manpower Distribution Chart
+    function initManpowerDistributionChart() {
+        const ctx = document.getElementById('manpowerChart');
+        if (!ctx) return;
+        
+        const ctxObj = ctx.getContext('2d');
+        
+        // Sample data - in a real implementation, this would come from the backend
+        const data = {
+            labels: ['Civil', 'Electrical', 'Mechanical', 'Piping', 'Structural'],
+            datasets: [{
+                label: 'Budgeted Hours',
+                data: [2400, 1800, 3200, 1500, 2100],
+                backgroundColor: 'rgba(0, 166, 126, 0.7)',
+                borderColor: 'rgba(0, 166, 126, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Earned Hours',
+                data: [1800, 1200, 2800, 1100, 1600],
+                backgroundColor: 'rgba(0, 200, 150, 0.4)',
+                borderColor: 'rgba(0, 200, 150, 1)',
+                borderWidth: 1
+            }]
+        };
+        
+        manpowerChart = new Chart(ctxObj, {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Hours',
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += context.parsed.y + ' hours';
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateManpowerDistributionChart() {
+        if (!manpowerChart) return;
+        
+        // In a real implementation, this would fetch new data based on the selected project
+        // For now, we'll just update with random values
+        
+        const newBudgetedData = [];
+        const newEarnedData = [];
+        
+        for (let i = 0; i < 5; i++) {
+            const budgeted = Math.floor(Math.random() * 4000) + 1000;
+            const earned = Math.floor(budgeted * (Math.random() * 0.8 + 0.1)); // 10-90% of budgeted
+            
+            newBudgetedData.push(budgeted);
+            newEarnedData.push(earned);
+        }
+        
+        manpowerChart.data.datasets[0].data = newBudgetedData;
+        manpowerChart.data.datasets[1].data = newEarnedData;
+        manpowerChart.update();
+    }
+    
+    // Budget by Phase Chart
+    function initBudgetByPhaseChart() {
+        const ctx = document.getElementById('budgetChart');
+        if (!ctx) return;
+        
+        const ctxObj = ctx.getContext('2d');
+        
+        // Sample data - in a real implementation, this would come from the backend
+        const data = {
+            labels: ['Engineering', 'Procurement', 'Construction', 'Commissioning', 'Management'],
+            datasets: [{
+                data: [15, 25, 40, 10, 10],
+                backgroundColor: [
+                    'rgba(0, 166, 126, 0.8)',
+                    'rgba(0, 200, 150, 0.8)',
+                    'rgba(0, 230, 180, 0.8)',
+                    'rgba(0, 255, 210, 0.8)',
+                    'rgba(0, 140, 110, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(0, 166, 126, 1)',
+                    'rgba(0, 200, 150, 1)',
+                    'rgba(0, 230, 180, 1)',
+                    'rgba(0, 255, 210, 1)',
+                    'rgba(0, 140, 110, 1)'
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        budgetChart = new Chart(ctxObj, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            padding: 10,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                return `${label}: ${value}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateBudgetByPhaseChart() {
+        if (!budgetChart) return;
+        
+        // In a real implementation, this would fetch new data based on the selected project
+        // For now, we'll just update with random values
+        
+        const newData = [];
+        let total = 0;
+        
+        // Generate 5 random values that will sum to 100
+        for (let i = 0; i < 5; i++) {
+            newData.push(Math.floor(Math.random() * 30) + 5);
+            total += newData[i];
+        }
+        
+        // Normalize to sum to 100
+        for (let i = 0; i < 5; i++) {
+            newData[i] = Math.round((newData[i] / total) * 100);
+        }
+        
+        // Ensure sum is exactly 100 by adjusting the last value
+        let sum = newData.reduce((a, b) => a + b, 0);
+        newData[4] += (100 - sum);
+        
+        budgetChart.data.datasets[0].data = newData;
+        budgetChart.update();
+    }
+</script>
+{% endblock %}
