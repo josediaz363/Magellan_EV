@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Magellan EV - Settings{% endblock %}
+
+{% block content %}
+    <div class="navbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h2>Dashboard Settings</h2>
+            <div>
+                <a href="{{ url_for('main.index') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="data-table">
+                <div class="title">Dashboard Visualization Settings</div>
+                <div class="p-3">
+                    <form id="dashboardSettingsForm">
+                        <div class="mb-4">
+                            <h5>Select Charts to Display</h5>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="show_overall_progress" checked>
+                                <label class="form-check-label" for="show_overall_progress">
+                                    Overall Progress
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="show_quantity_distribution" checked>
+                                <label class="form-check-label" for="show_quantity_distribution">
+                                    Quantity Distribution
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="show_progress_histogram" checked>
+                                <label class="form-check-label" for="show_progress_histogram">
+                                    Progress Histogram
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="show_schedule_performance" checked>
+                                <label class="form-check-label" for="show_schedule_performance">
+                                    Schedule Performance Index
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="show_budget_phase" checked>
+                                <label class="form-check-label" for="show_budget_phase">
+                                    Budget by Phase
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="show_manpower_distribution" checked>
+                                <label class="form-check-label" for="show_manpower_distribution">
+                                    Manpower Distribution
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>Planned % Complete Interval</h5>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="planned_complete_interval" id="interval_daily" value="daily">
+                                <label class="form-check-label" for="interval_daily">
+                                    Daily
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="planned_complete_interval" id="interval_weekly" value="weekly" checked>
+                                <label class="form-check-label" for="interval_weekly">
+                                    Weekly
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="planned_complete_interval" id="interval_monthly" value="monthly">
+                                <label class="form-check-label" for="interval_monthly">
+                                    Monthly
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load saved settings from localStorage
+        loadSavedSettings();
+        
+        // Form submission handler
+        document.getElementById('dashboardSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveSettings();
+            alert('Settings saved successfully!');
+        });
+    });
+    
+    function loadSavedSettings() {
+        // Try to get saved settings from localStorage
+        const savedSettings = localStorage.getItem('dashboardSettings');
+        
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            
+            // Set checkbox values
+            document.getElementById('show_overall_progress').checked = settings.show_overall_progress;
+            document.getElementById('show_quantity_distribution').checked = settings.show_quantity_distribution;
+            document.getElementById('show_progress_histogram').checked = settings.show_progress_histogram;
+            document.getElementById('show_schedule_performance').checked = settings.show_schedule_performance;
+            document.getElementById('show_budget_phase').checked = settings.show_budget_phase;
+            document.getElementById('show_manpower_distribution').checked = settings.show_manpower_distribution;
+            
+            // Set radio button value
+            const intervalRadio = document.querySelector(`input[name="planned_complete_interval"][value="${settings.planned_complete_interval}"]`);
+            if (intervalRadio) {
+                intervalRadio.checked = true;
+            }
+        }
+    }
+    
+    function saveSettings() {
+        // Get values from form
+        const settings = {
+            show_overall_progress: document.getElementById('show_overall_progress').checked,
+            show_quantity_distribution: document.getElementById('show_quantity_distribution').checked,
+            show_progress_histogram: document.getElementById('show_progress_histogram').checked,
+            show_schedule_performance: document.getElementById('show_schedule_performance').checked,
+            show_budget_phase: document.getElementById('show_budget_phase').checked,
+            show_manpower_distribution: document.getElementById('show_manpower_distribution').checked,
+            planned_complete_interval: document.querySelector('input[name="planned_complete_interval"]:checked').value
+        };
+        
+        // Save to localStorage
+        localStorage.setItem('dashboardSettings', JSON.stringify(settings));
+    }
+</script>
+{% endblock %}
