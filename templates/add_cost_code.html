@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Add Cost Code{% endblock %}
+
+{% block content %}
+<div class="navbar">
+    <div class="d-flex justify-content-between align-items-center w-100">
+        <h2>Add Cost Code</h2>
+        <div>
+            <a href="{{ url_for('main.list_cost_codes') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left"></i> Back to Cost Codes
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="form-container">
+    <form method="POST" action="{{ url_for('main.add_cost_code') }}">
+        <div class="form-group">
+            <label for="code">Cost Code ID</label>
+            <input type="text" class="form-control" id="code" name="code" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" class="form-control" id="description" name="description" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="discipline">Discipline</label>
+            <select class="form-control" id="discipline" name="discipline" required>
+                <option value="">Select Discipline</option>
+                {% for discipline in disciplines %}
+                <option value="{{ discipline }}">{{ discipline }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="project_ids">Associated Projects</label>
+            <select class="form-control" id="project_ids" name="project_ids" multiple required>
+                {% for project in projects %}
+                <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple projects</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="rule_of_credit_id">Rule of Credit (Optional)</label>
+            <select class="form-control" id="rule_of_credit_id" name="rule_of_credit_id">
+                <option value="">None</option>
+                {% for rule in rules %}
+                <option value="{{ rule.id }}">{{ rule.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Add Cost Code</button>
+    </form>
+</div>
+{% endblock %}

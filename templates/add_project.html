@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Add Project - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Add Project{% endblock %}
+
+{% block content %}
+    <div class="content-container">
+        <div class="card">
+            <div class="card-header">
+                <h2>Create New Project</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.add_project') }}">
+                    <div class="form-group">
+                        <label for="project_id_str">Project ID</label>
+                        <input type="text" id="project_id_str" name="project_id_str" class="form-control" placeholder="e.g., PRJ-001 (auto-generated if left blank)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="name">Project Name <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" class="form-control" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <a href="{{ url_for('main.projects') }}" class="btn btn-outline">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Create Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
