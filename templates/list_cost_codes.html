@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Magellan EV - Cost Codes{% endblock %}
+
+{% block page_title %}Cost Codes{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ url_for('main.add_cost_code') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Cost Code
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="filter-container">
+        <div class="filter-flex-row">
+            <div class="filter-flex-item">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search cost codes...">
+            </div>
+            <div class="filter-flex-item">
+                <select id="projectFilter" class="form-select">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <select id="disciplineFilter" class="form-select">
+                    <option value="">All Disciplines</option>
+                    {% for discipline in disciplines %}
+                        <option value="{{ discipline }}">{{ discipline }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <button id="applyFilters" class="btn btn-outline-light w-100">Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table class="table" id="costCodesTable">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th>Discipline</th>
+                    <th>Project</th>
+                    <th>Rule of Credit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for code in cost_codes %}
+                    <tr data-project="{{ code.project_id }}" data-discipline="{{ code.discipline }}">
+                        <td>{{ code.cost_code_id_str }}</td>
+                        <td>{{ code.description }}</td>
+                        <td>{{ code.discipline }}</td>
+                        <td>{{ code.project.name if code.project else 'N/A' }}</td>
+                        <td>{{ code.rule_of_credit.name if code.rule_of_credit else 'None' }}</td>
+                        <td class="actions">
+                            <a href="{{ url_for('main.edit_cost_code', cost_code_id=code.id) }}" class="btn btn-sm btn-outline-light me-1" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-light" title="Delete" data-delete-action="{{ url_for('main.delete_cost_code', cost_code_id=code.id) }}" data-item-type="cost code">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">No cost codes found</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Delete Confirmation Modal removed in favor of popup confirmation -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const applyFilters = document.getElementById('applyFilters');
+        const projectFilter = document.getElementById('projectFilter');
+        const disciplineFilter = document.getElementById('disciplineFilter');
+        const searchInput = document.getElementById('searchInput');
+        const table = document.getElementById('costCodesTable');
+        const rows = table.querySelectorAll('tbody tr');
+        
+        // Apply filters
+        function applyTableFilters() {
+            const projectValue = projectFilter.value;
+            const disciplineValue = disciplineFilter.value;
+            const searchValue = searchInput.value.toLowerCase();
+            
+            rows.forEach(row => {
+                if (row.cells.length <= 1) return; // Skip "No cost codes found" row
+                
+                const projectMatch = !projectValue || row.getAttribute('data-project') === projectValue;
+                const disciplineMatch = !disciplineValue || row.getAttribute('data-discipline') === disciplineValue;
+                
+                let textMatch = true;
+                if (searchValue) {
+                    textMatch = false;
+                    for (let i = 0; i < row.cells.length - 1; i++) { // Skip actions column
+                        if (row.cells[i].textContent.toLowerCase().includes(searchValue)) {
+                            textMatch = true;
+                            break;
+                        }
+                    }
+                }
+                
+                row.style.display = (projectMatch && disciplineMatch && textMatch) ? '' : 'none';
+            });
+        }
+        
+        applyFilters.addEventListener('click', function() {
+            applyTableFilters();
+        });
+        
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                applyTableFilters();
+            }
+        });
+        
+        // Delete confirmation handled by the unified delete_confirmation.js
+    });
+</script>
+{% endblock %}
