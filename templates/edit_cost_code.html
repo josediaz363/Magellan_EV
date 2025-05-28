@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Cost Code{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <h1>Edit Cost Code</h1>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="code" class="form-label">Code</label>
+                        <input type="text" class="form-control" id="code" name="code" value="{{ cost_code.code }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" value="{{ cost_code.description }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a href="#" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
