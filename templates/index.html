@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Magellan EV Tracker{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        </div>
+    </div>
+
+    <!-- Project Selector -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Select Project</h6>
+                </div>
+                <div class="card-body">
+                    <select id="project-selector" class="form-control">
+                        <option value="">Select a project</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visualizations Container -->
+    <div id="visualization-container" class="row">
+        <!-- Overall Progress Donut Chart -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="donut-chart-container">
+                <div class="donut-chart-title">Overall Progress</div>
+                <div id="overall-progress-chart" data-visualization-type="donut" data-visualization-id="overall-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Work Items -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Work Items</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Description</th>
+                                    <th>Project</th>
+                                    <th>Sub Job</th>
+                                    <th>Progress</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in work_items %}
+                                <tr>
+                                    <td>{{ item.work_item_id_str }}</td>
+                                    <td>{{ item.description }}</td>
+                                    <td>{{ item.project.name }}</td>
+                                    <td>{{ item.sub_job.name }}</td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" style="width: {{ item.percent_complete_hours }}%;" aria-valuenow="{{ item.percent_complete_hours }}" aria-valuemin="0" aria-valuemax="100">{{ item.percent_complete_hours|round|int }}%</div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('main.view_work_item', work_item_id=item.id) }}" class="btn btn-info btn-sm">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Visualization Scripts -->
+<script src="{{ url_for('static', filename='js/core/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/api_client.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/event_bus.js') }}"></script>
+<script src="{{ url_for('static', filename='js/visualizations/visualization_base.js') }}"></script>
+<script src="{{ url_for('static', filename='js/visualizations/visualization_factory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/visualizations/donut_chart.js') }}"></script>
+
+<script>
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize core modules
+        App.init({ debug: true });
+        ApiClient.init();
+        EventBus.init({ debug: true });
+        
+        // Initialize visualizations
+        const container = document.getElementById('visualization-container');
+        if (container) {
+            const projectSelector = document.getElementById('project-selector');
+            const projectId = projectSelector ? projectSelector.value : null;
+            
+            // Initialize donut chart
+            const donutElement = document.getElementById('overall-progress-chart');
+            if (donutElement) {
+                const donutChart = DonutChart.create(donutElement, {
+                    projectId: projectId,
+                    size: 200,
+                    thickness: 30,
+                    colors: {
+                        primary: '#4e73df',
+                        secondary: '#eaecf4',
+                        text: '#5a5c69'
+                    }
+                });
+                
+                // Explicitly load data for the chart
+                if (projectId) {
+                    donutChart.loadData(projectId);
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
