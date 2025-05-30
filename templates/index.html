@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Magellan EV - Dashboard{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card dashboard-card">
+                <div class="card-body">
+                    <h5 class="card-title">Overall Progress</h5>
+                    <div class="donut-chart-container">
+                        <canvas id="overallProgressChart"></canvas>
+                        <div class="donut-center-text">
+                            <span id="progressPercentage">0%</span>
+                            <span class="small-text">Complete</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card dashboard-card">
+                <div class="card-title-bar">
+                    <h5 class="card-title">Projects</h5>
+                    <a href="{{ url_for('main.projects') }}" class="btn btn-sm btn-outline-light">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="project-list">
+                        {% for project in projects %}
+                        <div class="project-item">
+                            <div class="project-info">
+                                <h6>{{ project.name }}</h6>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ project.percent_complete }}%;" aria-valuenow="{{ project.percent_complete }}" aria-valuemin="0" aria-valuemax="100">{{ project.percent_complete|round|int }}%</div>
+                                </div>
+                            </div>
+                            <div class="project-actions">
+                                <a href="{{ url_for('main.view_project', project_id=project.id) }}" class="btn btn-sm btn-outline-light">View</a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="no-data-message">
+                            <p>No projects found</p>
+                            <a href="{{ url_for('main.add_project') }}" class="btn btn-primary">Add Project</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card dashboard-card">
+                <div class="card-title-bar">
+                    <h5 class="card-title">Recent Work Items</h5>
+                    <a href="{{ url_for('main.list_work_items') }}" class="btn btn-sm btn-outline-light">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Description</th>
+                                    <th>Project</th>
+                                    <th>Sub Job</th>
+                                    <th>Progress</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in work_items %}
+                                <tr>
+                                    <td>{{ item.work_item_id_str }}</td>
+                                    <td>{{ item.description }}</td>
+                                    <td>{{ item.project.name }}</td>
+                                    <td>{{ item.sub_job.name }}</td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" style="width: {{ item.percent_complete_hours }}%;" aria-valuenow="{{ item.percent_complete_hours }}" aria-valuemin="0" aria-valuemax="100">{{ item.percent_complete_hours|round|int }}%</div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('main.view_work_item', workitem_id=item.id) }}" class="btn btn-sm btn-outline-light">View</a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No work items found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate overall progress from all projects
+        let totalBudgetedHours = 0;
+        let totalEarnedHours = 0;
+        let overallProgress = 0;
+        
+        {% for project in projects %}
+            totalBudgetedHours += {{ project.total_budgeted_hours or 0 }};
+            totalEarnedHours += {{ project.total_earned_hours or 0 }};
+        {% endfor %}
+        
+        if (totalBudgetedHours > 0) {
+            overallProgress = (totalEarnedHours / totalBudgetedHours) * 100;
+        }
+        
+        // Update the center text
+        document.getElementById('progressPercentage').textContent = Math.round(overallProgress) + '%';
+        
+        // Create the donut chart
+        const ctx = document.getElementById('overallProgressChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [overallProgress, 100 - overallProgress],
+                    backgroundColor: [
+                        '#4CAF50',  // Green for completed
+                        '#E0E0E0'   // Light gray for remaining
+                    ],
+                    borderWidth: 0,
+                    cutout: '80%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                },
+                animation: {
+                    animateRotate: true,
+                    animateScale: true
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

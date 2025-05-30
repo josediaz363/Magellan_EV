@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Magellan EV - View Sub Job{% endblock %}
+
+{% block page_title %}{{ sub_job.name }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ url_for('main.add_work_item', project_id=sub_job.project_id, sub_job_id=sub_job.id) }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Work Item
+    </a>
+    <a href="{{ url_for('main.edit_sub_job', sub_job_id=sub_job.id) }}" class="btn btn-outline-light">
+        <i class="fas fa-edit"></i> Edit Sub Job
+    </a>
+    <a href="{{ url_for('main.view_project', project_id=sub_job.project_id) }}" class="btn btn-outline-light">
+        <i class="fas fa-arrow-left"></i> Back to Project
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="subjob-overview">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card info-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Sub Job Information</h5>
+                        <div class="info-item">
+                            <span class="info-label">Sub Job ID:</span>
+                            <span class="info-value">{{ sub_job.sub_job_id_str }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Description:</span>
+                            <span class="info-value">{{ sub_job.description }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Area:</span>
+                            <span class="info-value">{{ sub_job.area or 'N/A' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card progress-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Progress Overview</h5>
+                        <div class="progress-container">
+                            <div class="progress-item">
+                                <span class="progress-label">Overall Progress:</span>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ overall_progress }}%;" aria-valuenow="{{ overall_progress }}" aria-valuemin="0" aria-valuemax="100">{{ overall_progress|round|int }}%</div>
+                                </div>
+                            </div>
+                            <div class="progress-metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Budgeted Hours:</span>
+                                    <span class="metric-value">{{ total_budgeted_hours|round(1) }}</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Earned Hours:</span>
+                                    <span class="metric-value">{{ total_earned_hours|round(1) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-title-bar">
+                        <h5 class="card-title">Work Items</h5>
+                        <a href="{{ url_for('main.add_work_item', project_id=sub_job.project_id, sub_job_id=sub_job.id) }}" class="btn btn-sm btn-outline-light">
+                            <i class="fas fa-plus"></i> Add Work Item
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Description</th>
+                                        <th>Cost Code</th>
+                                        <th>Budgeted Hours</th>
+                                        <th>Earned Hours</th>
+                                        <th>Progress</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for work_item in work_items %}
+                                    <tr>
+                                        <td>{{ work_item.work_item_id_str }}</td>
+                                        <td>{{ work_item.description }}</td>
+                                        <td>{{ work_item.cost_code.cost_code_id_str }}</td>
+                                        <td>{{ work_item.budgeted_man_hours|round(1) }}</td>
+                                        <td>{{ work_item.earned_man_hours|round(1) }}</td>
+                                        <td>
+                                            <div class="progress">
+                                                <div class="progress-bar" role="progressbar" style="width: {{ work_item.percent_complete_hours }}%;" aria-valuenow="{{ work_item.percent_complete_hours }}" aria-valuemin="0" aria-valuemax="100">{{ work_item.percent_complete_hours|round|int }}%</div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('main.view_work_item', workitem_id=work_item.id) }}" class="btn btn-sm btn-outline-light">View</a>
+                                            <a href="{{ url_for('main.edit_work_item', workitem_id=work_item.id) }}" class="btn btn-sm btn-outline-light">Edit</a>
+                                            <a href="{{ url_for('main.update_progress', workitem_id=work_item.id) }}" class="btn btn-sm btn-outline-light">Update Progress</a>
+                                            <button class="btn btn-sm btn-outline-light" data-delete-action="{{ url_for('main.delete_work_item', workitem_id=work_item.id) }}" data-item-type="work item">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No work items found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
