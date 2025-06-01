@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Work Items - Magellan EV Tracker{% endblock %}
+
+{% block page_title %}Work Items{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ url_for('main.add_work_item') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Work Item
+    </a>
+{% endblock %}
+
+{% block content %}
+    <!-- Project Selection -->
+    <div class="filter-container mb-3">
+        <div class="filter-flex-row grid-3">
+            <div class="filter-flex-item">
+                <label class="form-label">Project</label>
+                <select class="form-select" id="project_id" name="project_id">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}" {% if request.args.get('project_id')|int == project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <label class="form-label">Sub Job</label>
+                <select class="form-select" id="sub_job_id" name="sub_job_id">
+                    <option value="">All Sub Jobs</option>
+                    {% for sub_job in sub_jobs %}
+                        <option value="{{ sub_job.id }}" {% if request.args.get('sub_job_id')|int == sub_job.id %}selected{% endif %}>
+                            {{ sub_job.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-outline-light w-100" id="apply-selection">Apply Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-container">
+        <div class="filter-flex-row grid-5">
+            <div class="filter-flex-item">
+                <input type="text" class="form-control" id="search" name="search" placeholder="Search work items..." value="{{ request.args.get('search', '') }}">
+            </div>
+            <div class="filter-flex-item">
+                <select class="form-select" id="discipline" name="discipline">
+                    <option value="">All Disciplines</option>
+                    {% for discipline in disciplines %}
+                        <option value="{{ discipline }}" {% if request.args.get('discipline') == discipline %}selected{% endif %}>
+                            {{ discipline }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Status</option>
+                    <option value="not_started" {% if request.args.get('status') == 'not_started' %}selected{% endif %}>Not Started</option>
+                    <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <select class="form-select" id="sort_by" name="sort_by">
+                    <option value="">Sort By</option>
+                    <option value="id" {% if request.args.get('sort_by') == 'id' %}selected{% endif %}>Work Item ID</option>
+                    <option value="description" {% if request.args.get('sort_by') == 'description' %}selected{% endif %}>Description</option>
+                    <option value="progress" {% if request.args.get('sort_by') == 'progress' %}selected{% endif %}>Progress</option>
+                    <option value="cost_code" {% if request.args.get('sort_by') == 'cost_code' %}selected{% endif %}>Cost Code</option>
+                </select>
+            </div>
+            <div class="filter-flex-item">
+                <button class="btn btn-outline-light w-100" id="apply-filters">Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Items Table -->
+    <div class="data-table">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Work Item ID</th>
+                    <th>Description</th>
+                    <th>Cost Code</th>
+                    <th>Budgeted Quantity</th>
+                    <th>Earned Quantity</th>
+                    <th>Budgeted Hours</th>
+                    <th>Earned Hours</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if work_items %}
+                    {% for item in work_items %}
+                        <tr>
+                            <td>{{ item.work_item_id_str }}</td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.cost_code.cost_code_id_str if item.cost_code else 'N/A' }}</td>
+                            <td>{{ item.budgeted_quantity }} {{ item.unit_of_measure }}</td>
+                            <td>{{ (item.budgeted_quantity * item.percent_complete_hours / 100)|round(2) }} {{ item.unit_of_measure }}</td>
+                            <td>{{ item.budgeted_man_hours }}</td>
+                            <td>{{ item.earned_man_hours }}</td>
+                            <td>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ item.percent_complete_hours }}%" aria-valuenow="{{ item.percent_complete_hours }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="progress-value">{{ item.percent_complete_hours|round|int }}%</div>
+                            </td>
+                            <td>
+                                {% if item.percent_complete_hours == 0 %}
+                                    <span class="badge badge-status badge-not-started">Not Started</span>
+                                {% elif item.percent_complete_hours < 100 %}
+                                    <span class="badge badge-status badge-in-progress">In Progress</span>
+                                {% else %}
+                                    <span class="badge badge-status badge-completed">Completed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('main.update_work_item_progress', work_item_id=item.id) }}" class="btn btn-sm btn-outline-light me-1" title="Update Progress">
+                                    <i class="fas fa-chart-line"></i>
+                                </a>
+                                <a href="{{ url_for('main.edit_work_item', work_item_id=item.id) }}" class="btn btn-sm btn-outline-light me-1" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{{ url_for('main.view_work_item', work_item_id=item.id) }}" class="btn btn-sm btn-outline-light me-1" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-light" title="Delete" data-delete-action="{{ url_for('main.delete_work_item', work_item_id=item.id) }}" data-item-type="work item">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center">No work items found</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Apply selection button
+        document.getElementById('apply-selection').addEventListener('click', function() {
+            applyFilters();
+        });
+
+        // Apply filters button
+        document.getElementById('apply-filters').addEventListener('click', function() {
+            applyFilters();
+        });
+
+        // Function to apply all filters
+        function applyFilters() {
+            const projectId = document.getElementById('project_id').value;
+            const subJobId = document.getElementById('sub_job_id').value;
+            const search = document.getElementById('search').value;
+            const discipline = document.getElementById('discipline').value;
+            const status = document.getElementById('status').value;
+            const sortBy = document.getElementById('sort_by').value;
+
+            let url = '{{ url_for("main.work_items") }}?';
+            
+            if (projectId) url += `project_id=${projectId}&`;
+            if (subJobId) url += `sub_job_id=${subJobId}&`;
+            if (search) url += `search=${encodeURIComponent(search)}&`;
+            if (discipline) url += `discipline=${encodeURIComponent(discipline)}&`;
+            if (status) url += `status=${encodeURIComponent(status)}&`;
+            if (sortBy) url += `sort_by=${encodeURIComponent(sortBy)}&`;
+
+            // Remove trailing & if exists
+            if (url.endsWith('&')) {
+                url = url.slice(0, -1);
+            }
+
+            window.location.href = url;
+        }
+
+        // Delete confirmation handled by the unified delete_confirmation.js
+    });
+</script>
+{% endblock %}
