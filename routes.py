@@ -1,0 +1,593 @@
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from services.project_service import ProjectService
+from services.sub_job_service import SubJobService
+from services.work_item_service import WorkItemService
+from services.cost_code_service import CostCodeService
+from services.rule_of_credit_service import RuleOfCreditService
+from services.url_service import UrlService
+from models import Project, SubJob, WorkItem, CostCode, RuleOfCredit, RuleStep
+
+main_bp = Blueprint('main', __name__)
+
+# Default disciplines list for the application
+DEFAULT_DISCIPLINES = ['Civil', 'Structural', 'Mechanical', 'Electrical', 'Instrumentation', 'Piping']
+
+@main_bp.route('/')
+def index():
+    return redirect(url_for('main.dashboard'))
+
+@main_bp.route('/dashboard')
+def dashboard():
+    try:
+        projects_count = ProjectService.count_projects()
+        sub_jobs_count = SubJobService.count_sub_jobs()
+        work_items_count = WorkItemService.count_work_items()
+        rules_count = RuleOfCreditService.count_rules_of_credit()
+        
+        return render_template('dashboard.html', 
+                              projects_count=projects_count,
+                              sub_jobs_count=sub_jobs_count,
+                              work_items_count=work_items_count,
+                              rules_count=rules_count)
+    except Exception as e:
+        flash(f"Error loading dashboard: {str(e)}", "error")
+        return render_template('dashboard.html')
+
+# Project routes
+@main_bp.route('/projects')
+def projects():
+    try:
+        projects = ProjectService.get_all_projects()
+        return render_template('projects.html', projects=projects)
+    except Exception as e:
+        flash(f"Error loading projects: {str(e)}", "error")
+        return render_template('projects.html', projects=[])
+
+@main_bp.route('/add_project', methods=['GET', 'POST'])
+def add_project():
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '')
+            project_id_str = request.form.get('project_id_str', '')
+            description = request.form.get('description', '')
+            
+            # Create project
+            project = ProjectService.create_project(
+                name=name,
+                project_id_str=project_id_str,
+                description=description
+            )
+            
+            flash(f"Project {name} created successfully!", "success")
+            return redirect(url_for('main.projects'))
+        except Exception as e:
+            flash(f"Error creating project: {str(e)}", "error")
+            return render_template('add_project.html')
+    
+    return render_template('add_project.html')
+
+@main_bp.route('/view_project/<int:project_id>')
+def view_project(project_id):
+    try:
+        project = ProjectService.get_project_by_id(project_id)
+        if not project:
+            flash("Project not found", "error")
+            return redirect(url_for('main.projects'))
+        
+        sub_jobs = SubJobService.get_sub_jobs_by_project(project_id)
+        return render_template('view_project.html', project=project, sub_jobs=sub_jobs)
+    except Exception as e:
+        flash(f"Error loading project: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+@main_bp.route('/edit_project/<int:project_id>', methods=['GET', 'POST'])
+def edit_project(project_id):
+    try:
+        project = ProjectService.get_project_by_id(project_id)
+        if not project:
+            flash("Project not found", "error")
+            return redirect(url_for('main.projects'))
+        
+        if request.method == 'POST':
+            try:
+                name = request.form.get('name', '')
+                description = request.form.get('description', '')
+                
+                # Update project
+                ProjectService.update_project(
+                    project_id=project_id,
+                    name=name,
+                    description=description
+                )
+                
+                flash(f"Project {name} updated successfully!", "success")
+                return redirect(url_for('main.view_project', project_id=project_id))
+            except Exception as e:
+                flash(f"Error updating project: {str(e)}", "error")
+                return render_template('edit_project.html', project=project)
+        
+        return render_template('edit_project.html', project=project)
+    except Exception as e:
+        flash(f"Error editing project: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+@main_bp.route('/delete_project/<int:project_id>', methods=['POST'])
+def delete_project(project_id):
+    try:
+        ProjectService.delete_project(project_id)
+        flash("Project deleted successfully!", "success")
+        return redirect(url_for('main.projects'))
+    except Exception as e:
+        flash(f"Error deleting project: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+# Sub Job routes
+@main_bp.route('/add_sub_job', methods=['GET', 'POST'])
+def add_sub_job():
+    try:
+        project_id = request.args.get('project_id', type=int)
+        
+        if request.method == 'POST':
+            try:
+                project_id = request.form.get('project_id', type=int)
+                name = request.form.get('name', '')
+                sub_job_id_str = request.form.get('sub_job_id_str', '')
+                description = request.form.get('description', '')
+                area = request.form.get('area', '')
+                discipline = request.form.get('discipline', '')
+                budgeted_hours = request.form.get('budgeted_hours', type=float, default=0.0)
+                
+                # Create sub job
+                sub_job = SubJobService.create_sub_job(
+                    project_id=project_id,
+                    name=name,
+                    sub_job_id_str=sub_job_id_str,
+                    description=description,
+                    area=area,
+                    discipline=discipline,
+                    budgeted_hours=budgeted_hours
+                )
+                
+                flash(f"Sub Job {name} created successfully!", "success")
+                return redirect(url_for('main.view_project', project_id=project_id))
+            except Exception as e:
+                flash(f"Error creating sub job: {str(e)}", "error")
+                projects = ProjectService.get_all_projects()
+                return render_template('add_sub_job.html', projects=projects, selected_project_id=project_id, disciplines=DEFAULT_DISCIPLINES)
+        
+        projects = ProjectService.get_all_projects()
+        return render_template('add_sub_job.html', projects=projects, selected_project_id=project_id, disciplines=DEFAULT_DISCIPLINES)
+    except Exception as e:
+        flash(f"Error loading add sub job form: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+@main_bp.route('/view_sub_job/<int:sub_job_id>')
+def view_sub_job(sub_job_id):
+    try:
+        sub_job = SubJobService.get_sub_job_by_id(sub_job_id)
+        if not sub_job:
+            flash("Sub Job not found", "error")
+            return redirect(url_for('main.projects'))
+        
+        work_items = WorkItemService.get_work_items_by_sub_job(sub_job_id)
+        return render_template('view_sub_job.html', sub_job=sub_job, work_items=work_items)
+    except Exception as e:
+        flash(f"Error loading sub job: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+@main_bp.route('/edit_sub_job/<int:sub_job_id>', methods=['GET', 'POST'])
+def edit_sub_job(sub_job_id):
+    try:
+        sub_job = SubJobService.get_sub_job_by_id(sub_job_id)
+        if not sub_job:
+            flash("Sub Job not found", "error")
+            return redirect(url_for('main.projects'))
+        
+        if request.method == 'POST':
+            try:
+                name = request.form.get('name', '')
+                description = request.form.get('description', '')
+                area = request.form.get('area', '')
+                discipline = request.form.get('discipline', '')
+                budgeted_hours = request.form.get('budgeted_hours', type=float, default=0.0)
+                
+                # Update sub job
+                SubJobService.update_sub_job(
+                    sub_job_id=sub_job_id,
+                    name=name,
+                    description=description,
+                    area=area,
+                    discipline=discipline,
+                    budgeted_hours=budgeted_hours
+                )
+                
+                flash(f"Sub Job {name} updated successfully!", "success")
+                return redirect(url_for('main.view_sub_job', sub_job_id=sub_job_id))
+            except Exception as e:
+                flash(f"Error updating sub job: {str(e)}", "error")
+                return render_template('edit_sub_job.html', sub_job=sub_job, disciplines=DEFAULT_DISCIPLINES)
+        
+        return render_template('edit_sub_job.html', sub_job=sub_job, disciplines=DEFAULT_DISCIPLINES)
+    except Exception as e:
+        flash(f"Error editing sub job: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+@main_bp.route('/delete_sub_job/<int:sub_job_id>', methods=['POST'])
+def delete_sub_job(sub_job_id):
+    try:
+        sub_job = SubJobService.get_sub_job_by_id(sub_job_id)
+        if not sub_job:
+            flash("Sub Job not found", "error")
+            return redirect(url_for('main.projects'))
+        
+        project_id = sub_job.project_id
+        SubJobService.delete_sub_job(sub_job_id)
+        flash("Sub Job deleted successfully!", "success")
+        return redirect(url_for('main.view_project', project_id=project_id))
+    except Exception as e:
+        flash(f"Error deleting sub job: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+# Cost Code routes
+@main_bp.route('/cost_codes')
+def cost_codes():
+    try:
+        project_id = request.args.get('project_id', type=int)
+        if project_id:
+            project = ProjectService.get_project_by_id(project_id)
+            cost_codes = CostCodeService.get_cost_codes_by_project(project_id)
+            return render_template('cost_codes.html', cost_codes=cost_codes, project=project, disciplines=DEFAULT_DISCIPLINES, projects=ProjectService.get_all_projects())
+        else:
+            cost_codes = CostCodeService.get_all_cost_codes()
+            return render_template('cost_codes.html', cost_codes=cost_codes, project=None, disciplines=DEFAULT_DISCIPLINES, projects=ProjectService.get_all_projects())
+    except Exception as e:
+        flash(f"Error loading cost codes: {str(e)}", "error")
+        return render_template('cost_codes.html', cost_codes=[], project=None, disciplines=DEFAULT_DISCIPLINES, projects=[])
+
+@main_bp.route('/add_cost_code', methods=['GET', 'POST'])
+def add_cost_code():
+    try:
+        project_id = request.args.get('project_id', type=int)
+        rules = RuleOfCreditService.get_all_rules_of_credit()
+        
+        if request.method == 'POST':
+            try:
+                project_id = request.form.get('project_id', type=int)
+                cost_code_id_str = request.form.get('cost_code_id_str', '')
+                description = request.form.get('description', '')
+                discipline = request.form.get('discipline', '')
+                rule_of_credit_id = request.form.get('rule_of_credit_id', type=int)
+                
+                # Create cost code
+                cost_code = CostCodeService.create_cost_code(
+                    project_id=project_id,
+                    cost_code_id_str=cost_code_id_str,
+                    description=description,
+                    discipline=discipline,
+                    rule_of_credit_id=rule_of_credit_id
+                )
+                
+                flash(f"Cost Code {cost_code_id_str} created successfully!", "success")
+                return redirect(url_for('main.cost_codes', project_id=project_id))
+            except Exception as e:
+                flash(f"Error creating cost code: {str(e)}", "error")
+                projects = ProjectService.get_all_projects()
+                return render_template('add_cost_code.html', projects=projects, rules=rules, selected_project_id=project_id, disciplines=DEFAULT_DISCIPLINES)
+        
+        projects = ProjectService.get_all_projects()
+        return render_template('add_cost_code.html', projects=projects, rules=rules, selected_project_id=project_id, disciplines=DEFAULT_DISCIPLINES)
+    except Exception as e:
+        flash(f"Error loading add cost code form: {str(e)}", "error")
+        return redirect(url_for('main.projects'))
+
+@main_bp.route('/edit_cost_code/<int:cost_code_id>', methods=['GET', 'POST'])
+def edit_cost_code(cost_code_id):
+    try:
+        cost_code = CostCodeService.get_cost_code_by_id(cost_code_id)
+        if not cost_code:
+            flash("Cost Code not found", "error")
+            return redirect(url_for('main.cost_codes'))
+        
+        rules = RuleOfCreditService.get_all_rules_of_credit()
+        
+        if request.method == 'POST':
+            try:
+                description = request.form.get('description', '')
+                discipline = request.form.get('discipline', '')
+                rule_of_credit_id = request.form.get('rule_of_credit_id', type=int)
+                
+                # Update cost code
+                CostCodeService.update_cost_code(
+                    cost_code_id=cost_code_id,
+                    description=description,
+                    discipline=discipline,
+                    rule_of_credit_id=rule_of_credit_id
+                )
+                
+                flash(f"Cost Code {cost_code.cost_code_id_str} updated successfully!", "success")
+                return redirect(url_for('main.cost_codes', project_id=cost_code.project_id))
+            except Exception as e:
+                flash(f"Error updating cost code: {str(e)}", "error")
+                return render_template('edit_cost_code.html', cost_code=cost_code, rules=rules, disciplines=DEFAULT_DISCIPLINES)
+        
+        return render_template('edit_cost_code.html', cost_code=cost_code, rules=rules, disciplines=DEFAULT_DISCIPLINES)
+    except Exception as e:
+        flash(f"Error editing cost code: {str(e)}", "error")
+        return redirect(url_for('main.cost_codes'))
+
+@main_bp.route('/delete_cost_code/<int:cost_code_id>', methods=['POST'])
+def delete_cost_code(cost_code_id):
+    try:
+        cost_code = CostCodeService.get_cost_code_by_id(cost_code_id)
+        if not cost_code:
+            flash("Cost Code not found", "error")
+            return redirect(url_for('main.cost_codes'))
+        
+        project_id = cost_code.project_id
+        CostCodeService.delete_cost_code(cost_code_id)
+        flash("Cost Code deleted successfully!", "success")
+        return redirect(url_for('main.cost_codes', project_id=project_id))
+    except Exception as e:
+        flash(f"Error deleting cost code: {str(e)}", "error")
+        return redirect(url_for('main.cost_codes'))
+
+# Work Item routes
+@main_bp.route('/work_items')
+def work_items():
+    try:
+        sub_job_id = request.args.get('sub_job_id', type=int)
+        if sub_job_id:
+            sub_job = SubJobService.get_sub_job_by_id(sub_job_id)
+            work_items = WorkItemService.get_work_items_by_sub_job(sub_job_id)
+            return render_template('work_items.html', work_items=work_items, sub_job=sub_job)
+        else:
+            work_items = WorkItemService.get_all_work_items()
+            return render_template('work_items.html', work_items=work_items, sub_job=None)
+    except Exception as e:
+        flash(f"Error loading work items: {str(e)}", "error")
+        return render_template('work_items.html', work_items=[], sub_job=None)
+
+@main_bp.route('/add_work_item', methods=['GET', 'POST'])
+def add_work_item():
+    try:
+        sub_job_id = request.args.get('sub_job_id', type=int)
+        
+        if request.method == 'POST':
+            try:
+                sub_job_id = request.form.get('sub_job_id', type=int)
+                name = request.form.get('name', '')
+                work_item_id_str = request.form.get('work_item_id_str', '')
+                description = request.form.get('description', '')
+                quantity = request.form.get('quantity', type=float, default=0.0)
+                unit = request.form.get('unit', '')
+                
+                # Create work item
+                work_item = WorkItemService.create_work_item(
+                    sub_job_id=sub_job_id,
+                    name=name,
+                    work_item_id_str=work_item_id_str,
+                    description=description,
+                    quantity=quantity,
+                    unit=unit
+                )
+                
+                flash(f"Work Item {name} created successfully!", "success")
+                return redirect(url_for('main.view_sub_job', sub_job_id=sub_job_id))
+            except Exception as e:
+                flash(f"Error creating work item: {str(e)}", "error")
+                sub_jobs = SubJobService.get_all_sub_jobs()
+                return render_template('add_work_item.html', sub_jobs=sub_jobs, selected_sub_job_id=sub_job_id)
+        
+        sub_jobs = SubJobService.get_all_sub_jobs()
+        return render_template('add_work_item.html', sub_jobs=sub_jobs, selected_sub_job_id=sub_job_id)
+    except Exception as e:
+        flash(f"Error loading add work item form: {str(e)}", "error")
+        return redirect(url_for('main.work_items'))
+
+@main_bp.route('/edit_work_item/<int:work_item_id>', methods=['GET', 'POST'])
+def edit_work_item(work_item_id):
+    try:
+        work_item = WorkItemService.get_work_item_by_id(work_item_id)
+        if not work_item:
+            flash("Work Item not found", "error")
+            return redirect(url_for('main.work_items'))
+        
+        if request.method == 'POST':
+            try:
+                name = request.form.get('name', '')
+                description = request.form.get('description', '')
+                quantity = request.form.get('quantity', type=float, default=0.0)
+                unit = request.form.get('unit', '')
+                
+                # Update work item
+                WorkItemService.update_work_item(
+                    work_item_id=work_item_id,
+                    name=name,
+                    description=description,
+                    quantity=quantity,
+                    unit=unit
+                )
+                
+                flash(f"Work Item {name} updated successfully!", "success")
+                return redirect(url_for('main.view_sub_job', sub_job_id=work_item.sub_job_id))
+            except Exception as e:
+                flash(f"Error updating work item: {str(e)}", "error")
+                return render_template('edit_work_item.html', work_item=work_item)
+        
+        return render_template('edit_work_item.html', work_item=work_item)
+    except Exception as e:
+        flash(f"Error editing work item: {str(e)}", "error")
+        return redirect(url_for('main.work_items'))
+
+@main_bp.route('/delete_work_item/<int:work_item_id>', methods=['POST'])
+def delete_work_item(work_item_id):
+    try:
+        work_item = WorkItemService.get_work_item_by_id(work_item_id)
+        if not work_item:
+            flash("Work Item not found", "error")
+            return redirect(url_for('main.work_items'))
+        
+        sub_job_id = work_item.sub_job_id
+        WorkItemService.delete_work_item(work_item_id)
+        flash("Work Item deleted successfully!", "success")
+        return redirect(url_for('main.view_sub_job', sub_job_id=sub_job_id))
+    except Exception as e:
+        flash(f"Error deleting work item: {str(e)}", "error")
+        return redirect(url_for('main.work_items'))
+
+# Rule of Credit routes
+@main_bp.route('/rules_of_credit')
+def rules_of_credit():
+    try:
+        rules = RuleOfCreditService.get_all_rules_of_credit()
+        return render_template('rules_of_credit.html', rules=rules)
+    except Exception as e:
+        flash(f"Error loading rules of credit: {str(e)}", "error")
+        return render_template('rules_of_credit.html', rules=[])
+
+@main_bp.route('/add_rule_of_credit', methods=['GET', 'POST'])
+def add_rule_of_credit():
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '')
+            description = request.form.get('description', '')
+            
+            # Create rule of credit
+            rule = RuleOfCreditService.create_rule_of_credit(
+                name=name,
+                description=description
+            )
+            
+            # Process steps
+            steps_data = []
+            step_names = request.form.getlist('step_name[]')
+            step_weights = request.form.getlist('step_weight[]')
+            
+            for i in range(len(step_names)):
+                if step_names[i].strip() and step_weights[i].strip():
+                    try:
+                        weight = float(step_weights[i])
+                        steps_data.append({
+                            'name': step_names[i],
+                            'weight': weight
+                        })
+                    except ValueError:
+                        continue
+            
+            # Add steps to rule
+            for step_data in steps_data:
+                RuleOfCreditService.add_step_to_rule(
+                    rule_id=rule.id,
+                    name=step_data['name'],
+                    weight=step_data['weight']
+                )
+            
+            flash(f"Rule of Credit {name} created successfully!", "success")
+            return redirect(url_for('main.rules_of_credit'))
+        except Exception as e:
+            flash(f"Error creating rule of credit: {str(e)}", "error")
+            return render_template('add_rule_of_credit.html')
+    
+    return render_template('add_rule_of_credit.html')
+
+@main_bp.route('/view_rule_of_credit/<int:rule_id>')
+def view_rule_of_credit(rule_id):
+    try:
+        rule = RuleOfCreditService.get_rule_of_credit_by_id(rule_id)
+        if not rule:
+            flash("Rule of Credit not found", "error")
+            return redirect(url_for('main.rules_of_credit'))
+        
+        steps = RuleOfCreditService.get_steps_by_rule(rule_id)
+        return render_template('view_rule_of_credit.html', rule=rule, steps=steps)
+    except Exception as e:
+        flash(f"Error loading rule of credit: {str(e)}", "error")
+        return redirect(url_for('main.rules_of_credit'))
+
+@main_bp.route('/edit_rule_of_credit/<int:rule_id>', methods=['GET', 'POST'])
+def edit_rule_of_credit(rule_id):
+    try:
+        rule = RuleOfCreditService.get_rule_of_credit_by_id(rule_id)
+        if not rule:
+            flash("Rule of Credit not found", "error")
+            return redirect(url_for('main.rules_of_credit'))
+        
+        steps = RuleOfCreditService.get_steps_by_rule(rule_id)
+        
+        if request.method == 'POST':
+            try:
+                name = request.form.get('name', '')
+                description = request.form.get('description', '')
+                
+                # Update rule of credit
+                RuleOfCreditService.update_rule_of_credit(
+                    rule_id=rule_id,
+                    name=name,
+                    description=description
+                )
+                
+                # Delete existing steps
+                RuleOfCreditService.delete_steps_by_rule(rule_id)
+                
+                # Process steps
+                steps_data = []
+                step_names = request.form.getlist('step_name[]')
+                step_weights = request.form.getlist('step_weight[]')
+                
+                for i in range(len(step_names)):
+                    if step_names[i].strip() and step_weights[i].strip():
+                        try:
+                            weight = float(step_weights[i])
+                            steps_data.append({
+                                'name': step_names[i],
+                                'weight': weight
+                            })
+                        except ValueError:
+                            continue
+                
+                # Add steps to rule
+                for step_data in steps_data:
+                    RuleOfCreditService.add_step_to_rule(
+                        rule_id=rule_id,
+                        name=step_data['name'],
+                        weight=step_data['weight']
+                    )
+                
+                flash(f"Rule of Credit {name} updated successfully!", "success")
+                return redirect(url_for('main.view_rule_of_credit', rule_id=rule_id))
+            except Exception as e:
+                flash(f"Error updating rule of credit: {str(e)}", "error")
+                return render_template('edit_rule_of_credit.html', rule=rule, steps=steps)
+        
+        return render_template('edit_rule_of_credit.html', rule=rule, steps=steps)
+    except Exception as e:
+        flash(f"Error editing rule of credit: {str(e)}", "error")
+        return redirect(url_for('main.rules_of_credit'))
+
+@main_bp.route('/delete_rule_of_credit/<int:rule_id>', methods=['POST'])
+def delete_rule_of_credit(rule_id):
+    try:
+        RuleOfCreditService.delete_rule_of_credit(rule_id)
+        flash("Rule of Credit deleted successfully!", "success")
+        return redirect(url_for('main.rules_of_credit'))
+    except Exception as e:
+        flash(f"Error deleting rule of credit: {str(e)}", "error")
+        return redirect(url_for('main.rules_of_credit'))
+
+# Reports route
+@main_bp.route('/reports')
+def reports():
+    try:
+        return render_template('reports.html')
+    except Exception as e:
+        flash(f"Error loading reports: {str(e)}", "error")
+        return render_template('reports.html')
+
+# Error handlers
+@main_bp.app_errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@main_bp.app_errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'), 500
